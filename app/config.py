@@ -13,6 +13,7 @@ class Settings:
     ENV: str = os.getenv("ENV", "dev")
     VERSION: str = os.getenv("APP_VERSION", "0.1.0")
     TZ: str = os.getenv("TZ", "Asia/Tokyo")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
 
 settings = Settings()

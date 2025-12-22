@@ -28,6 +28,7 @@ def create_app() -> Flask:
             DEBUG=getattr(settings, "DEBUG", app.config["DEBUG"]),
             VERSION=getattr(settings, "VERSION", app.config["VERSION"]),
             TZ=getattr(settings, "TZ", app.config["TZ"]),
+            SECRET_KEY=getattr(settings, "SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")),
         )
     except Exception:
         # 存在しない場合は無視
@@ -47,9 +48,28 @@ def create_app() -> Flask:
     except Exception:
         pass
 
+    # blueprints/auth.py があれば登録
+    try:
+        from .blueprints.auth import bp as auth_bp  # type: ignore
+        app.register_blueprint(auth_bp)
+    except Exception:
+        pass
+
+    # テンプレート用のget_csrf関数を登録
+    try:
+        from .utils.security import get_csrf  # type: ignore
+        app.jinja_env.globals['get_csrf'] = get_csrf
+    except Exception:
+        pass
+
+    # ルートは auth.index にリダイレクト
     @app.get("/")
     def root():
-        """ヘルスチェック用のルート"""
-        return "OK", 200
+        """トップページ"""
+        try:
+            from flask import redirect, url_for
+            return redirect(url_for('auth.index'))
+        except:
+            return "OK", 200
 
     return app

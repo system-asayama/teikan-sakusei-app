@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>ログイン選択</h2>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">
+  <a class="card" href="{{ url_for('auth.system_admin_login') }}" style="text-decoration:none">
+    <h3>システム管理者</h3>
+    <p class="small" style="color:#666">全テナント横断の最高権限</p>
+  </a>
+  <a class="card" href="{{ url_for('auth.admin_login') }}" style="text-decoration:none">
+    <h3>管理者</h3>
+    <p class="small" style="color:#666">定款作成・編集</p>
+  </a>
+</div>
+{% endblock %}
