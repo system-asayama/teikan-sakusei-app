@@ -55,6 +55,13 @@ def create_app() -> Flask:
     except Exception:
         pass
 
+    # blueprints/teikan.py があれば登録
+    try:
+        from .blueprints.teikan import bp as teikan_bp  # type: ignore
+        app.register_blueprint(teikan_bp)
+    except Exception:
+        pass
+
     # テンプレート用のget_csrf関数を登録
     try:
         from .utils.security import get_csrf  # type: ignore
