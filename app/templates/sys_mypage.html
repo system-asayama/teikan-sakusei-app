@@ -119,8 +119,17 @@
     <button type="submit" class="btn">パスワードを変更</button>
   </form>
 
-  <div style="margin-top:30px; display:flex; gap:12px; flex-wrap:wrap">
-    <a class="btn sub" href="{{ url_for('system_admin.dashboard') }}">システム管理者ダッシュボードへ進む</a>
+  <div style="margin-top:30px">
+    <h3>ダッシュボード</h3>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px">
+      <a class="btn sub" href="{{ url_for('system_admin.dashboard') }}">システム管理者ダッシュボード</a>
+      <a class="btn sub" href="{{ url_for('tenant_admin.dashboard') }}">テナント管理者ダッシュボード</a>
+      <a class="btn sub" href="{{ url_for('admin.dashboard') }}">管理者ダッシュボード</a>
+      <a class="btn sub" href="{{ url_for('employee.dashboard') }}">従業員ダッシュボード</a>
+    </div>
+  </div>
+
+  <div style="margin-top:20px">
     <a class="btn" href="{{ url_for('auth.logout') }}" style="background-color:#dc3545">ログアウト</a>
   </div>
 </div>

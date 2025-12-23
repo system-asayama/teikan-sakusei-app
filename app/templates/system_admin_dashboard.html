@@ -26,6 +26,15 @@
   </div>
 
   <div style="margin-top:30px">
+    <h3>他のロールのダッシュボード</h3>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px">
+      <a class="btn sub" href="{{ url_for('tenant_admin.dashboard') }}">テナント管理者ダッシュボード</a>
+      <a class="btn sub" href="{{ url_for('admin.dashboard') }}">管理者ダッシュボード</a>
+      <a class="btn sub" href="{{ url_for('employee.dashboard') }}">従業員ダッシュボード</a>
+    </div>
+  </div>
+
+  <div style="margin-top:30px">
     <a class="btn sub" href="{{ url_for('system_admin.mypage') }}">マイページ</a>
     <a class="btn" href="{{ url_for('auth.logout') }}">ログアウト</a>
   </div>
