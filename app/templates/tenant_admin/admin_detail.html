@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}管理者詳細 - テナント管理者{% endblock %}
+{% block content %}
+<div class="container" style="max-width:800px; margin:50px auto; padding:20px;">
+    <h2>管理者詳細</h2>
+    <table class="table">
+        <tr><th>ID</th><td>{{ user.id }}</td></tr>
+        <tr><th>ログインID</th><td>{{ user.login_id }}</td></tr>
+        <tr><th>氏名</th><td>{{ user.name }}</td></tr>
+        <tr><th>メールアドレス</th><td>{{ user.email }}</td></tr>
+        <tr><th>ロール</th><td>{{ user.role_name }}</td></tr>
+        <tr><th>テナント</th><td>{{ user.tenant_name }}</td></tr>
+        <tr><th>有効</th><td>{{ '有効' if user.active else '無効' }}</td></tr>
+        <tr><th>オーナー</th><td>{{ 'はい' if user.is_owner else 'いいえ' }}</td></tr>
+        <tr><th>管理権限</th><td>{{ 'あり' if user.can_manage_admins else 'なし' }}</td></tr>
+        <tr><th>作成日時</th><td>{{ user.created_at }}</td></tr>
+        <tr><th>更新日時</th><td>{{ user.updated_at }}</td></tr>
+    </table>
+    <div style="margin-top:20px;">
+        <a href="{{ url_for('tenant_admin.admin_edit', uid=user.id) }}" class="btn btn-warning">編集</a>
+        <a href="{{ url_for('tenant_admin.admins') }}" class="btn btn-secondary">一覧に戻る</a>
+        <form method="POST" action="{{ url_for('tenant_admin.admin_delete', uid=user.id) }}" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf() }}">
+            <button type="submit" class="btn btn-danger">削除</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

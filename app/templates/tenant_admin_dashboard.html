@@ -19,7 +19,10 @@
 
   <div style="margin-top:30px">
     <h3>管理機能</h3>
-    <p style="color:#666; margin-top:12px">管理機能は次のフェーズで実装予定です。</p>
+    <ul style="list-style:none; padding:0; margin-top:12px">
+      <li style="margin:10px 0;"><a href="{{ url_for('tenant_admin.admins') }}" class="btn">管理者管理</a></li>
+      <li style="margin:10px 0;"><a href="{{ url_for('teikan.index') }}" class="btn">定款管理</a></li>
+    </ul>
   </div>
 
   <div style="margin-top:30px">
