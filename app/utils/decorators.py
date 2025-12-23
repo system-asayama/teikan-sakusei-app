@@ -11,8 +11,10 @@ from flask import session, redirect, url_for, flash
 # 役割定義
 # ===========================
 ROLES = {
-    "SYSTEM_ADMIN": "system_admin",     # 全テナント横断の最高権限
-    "ADMIN":        "admin",            # 一般管理者
+    "SYSTEM_ADMIN":  "system_admin",     # 全テナント横断の最高権限
+    "TENANT_ADMIN":  "tenant_admin",     # テナント管理者
+    "ADMIN":         "admin",            # 一般管理者
+    "EMPLOYEE":      "employee",         # 従業員
 }
 
 

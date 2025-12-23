@@ -16,8 +16,12 @@ def index():
     role = session.get("role")
     if role == ROLES["SYSTEM_ADMIN"]:
         return redirect(url_for('auth.system_admin_dashboard'))
+    if role == ROLES["TENANT_ADMIN"]:
+        return redirect(url_for('auth.tenant_admin_dashboard'))
     if role == ROLES["ADMIN"]:
         return redirect(url_for('auth.admin_dashboard'))
+    if role == ROLES["EMPLOYEE"]:
+        return redirect(url_for('auth.employee_dashboard'))
     return redirect(url_for('auth.select_login'))
 
 
@@ -113,6 +117,31 @@ def system_admin_login():
     return render_template('sysadmin_login.html', error=error)
 
 
+@bp.route('/tenant_admin_login', methods=['GET','POST'])
+def tenant_admin_login():
+    """テナント管理者ログイン"""
+    error = None
+    if request.method == 'POST':
+        login_id = request.form.get('login_id','').strip()
+        password = request.form.get('password','')
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            sql = _sql(conn, 'SELECT id, name, password_hash, tenant_id FROM "T_管理者" WHERE login_id=%s AND role=%s')
+            cur.execute(sql, (login_id, ROLES["TENANT_ADMIN"]))
+            row = cur.fetchone()
+            if row and check_password_hash(row[2], password):
+                user_id, name, tenant_id = row[0], row[1], row[3]
+                login_user(user_id, name, ROLES["TENANT_ADMIN"], tenant_id)
+                return redirect(url_for('auth.tenant_admin_dashboard'))
+            else:
+                error = "ログインIDまたはパスワードが違います"
+        finally:
+            try: conn.close()
+            except: pass
+    return render_template('tenant_admin_login.html', error=error)
+
+
 @bp.route('/admin_login', methods=['GET','POST'])
 def admin_login():
     """一般管理者ログイン"""
@@ -138,6 +167,32 @@ def admin_login():
     return render_template('admin_login.html', error=error)
 
 
+@bp.route('/employee_login', methods=['GET','POST'])
+def employee_login():
+    """従業員ログイン"""
+    error = None
+    if request.method == 'POST':
+        login_id = request.form.get('login_id','').strip()
+        password = request.form.get('password','')
+        conn = get_db()
+        try:
+            cur = conn.cursor()
+            # 従業員テーブルが存在する場合はそちらを使用、なければ管理者テーブルを使用
+            sql = _sql(conn, 'SELECT id, name, password_hash, tenant_id FROM "T_管理者" WHERE login_id=%s AND role=%s')
+            cur.execute(sql, (login_id, ROLES["EMPLOYEE"]))
+            row = cur.fetchone()
+            if row and check_password_hash(row[2], password):
+                user_id, name, tenant_id = row[0], row[1], row[3]
+                login_user(user_id, name, ROLES["EMPLOYEE"], tenant_id)
+                return redirect(url_for('auth.employee_dashboard'))
+            else:
+                error = "ログインIDまたはパスワードが違います"
+        finally:
+            try: conn.close()
+            except: pass
+    return render_template('employee_login.html', error=error)
+
+
 @bp.route('/logout')
 def logout():
     """ログアウト"""
@@ -158,6 +213,15 @@ def system_admin_dashboard():
     return f"<h1>システム管理者ダッシュボード</h1><p>ようこそ、{session.get('user_name')}さん</p><a href='/logout'>ログアウト</a>"
 
 
+@bp.route('/tenant_admin/dashboard')
+def tenant_admin_dashboard():
+    """テナント管理者ダッシュボード"""
+    role = session.get("role")
+    if role != ROLES["TENANT_ADMIN"]:
+        return redirect(url_for('auth.select_login'))
+    return f"<h1>テナント管理者ダッシュボード</h1><p>ようこそ、{session.get('user_name')}さん</p><a href='/logout'>ログアウト</a>"
+
+
 @bp.route('/admin/dashboard')
 def admin_dashboard():
     """一般管理者ダッシュボード"""
@@ -165,3 +229,12 @@ def admin_dashboard():
     if role != ROLES["ADMIN"]:
         return redirect(url_for('auth.select_login'))
     return f"<h1>管理者ダッシュボード</h1><p>ようこそ、{session.get('user_name')}さん</p><a href='/logout'>ログアウト</a>"
+
+
+@bp.route('/employee/dashboard')
+def employee_dashboard():
+    """従業員ダッシュボード"""
+    role = session.get("role")
+    if role != ROLES["EMPLOYEE"]:
+        return redirect(url_for('auth.select_login'))
+    return f"<h1>従業員ダッシュボード</h1><p>ようこそ、{session.get('user_name')}さん</p><a href='/logout'>ログアウト</a>"
