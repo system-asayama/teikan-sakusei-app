@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}テナント詳細 - システム管理者{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:800px; margin:50px auto; padding:20px;">
+    <h2>テナント詳細</h2>
+    
+    <table class="table">
+        <tr>
+            <th>ID</th>
+            <td>{{ tenant.id }}</td>
+        </tr>
+        <tr>
+            <th>名称</th>
+            <td>{{ tenant['名称'] }}</td>
+        </tr>
+        <tr>
+            <th>Slug</th>
+            <td>{{ tenant.slug }}</td>
+        </tr>
+        <tr>
+            <th>有効</th>
+            <td>{{ '有効' if tenant['有効'] else '無効' }}</td>
+        </tr>
+        <tr>
+            <th>作成日時</th>
+            <td>{{ tenant.created_at }}</td>
+        </tr>
+        <tr>
+            <th>更新日時</th>
+            <td>{{ tenant.updated_at }}</td>
+        </tr>
+    </table>
+    
+    <div style="margin-top:20px;">
+        <a href="{{ url_for('system_admin.tenant_edit', tid=tenant.id) }}" class="btn btn-warning">編集</a>
+        <a href="{{ url_for('system_admin.tenants') }}" class="btn btn-secondary">一覧に戻る</a>
+        
+        <form method="POST" action="{{ url_for('system_admin.tenant_delete', tid=tenant.id) }}" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf() }}">
+            <button type="submit" class="btn btn-danger">削除</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

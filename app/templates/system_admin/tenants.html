@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}テナント一覧 - システム管理者{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:1000px; margin:50px auto; padding:20px;">
+    <h2>テナント一覧</h2>
+    
+    <div style="margin-bottom:20px;">
+        <a href="{{ url_for('system_admin.mypage') }}" class="btn btn-secondary">マイページに戻る</a>
+        <a href="{{ url_for('system_admin.tenant_new') }}" class="btn btn-primary">新規テナント作成</a>
+    </div>
+    
+    {% if tenants %}
+    <div style="overflow-x:auto;">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>名称</th>
+                    <th>Slug</th>
+                    <th>有効</th>
+                    <th>作成日時</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tenants %}
+                <tr>
+                    <td>{{ t.id }}</td>
+                    <td>{{ t['名称'] }}</td>
+                    <td>{{ t.slug }}</td>
+                    <td>{{ '有効' if t['有効'] else '無効' }}</td>
+                    <td>{{ t.created_at }}</td>
+                    <td>
+                        <a href="{{ url_for('system_admin.tenant_detail', tid=t.id) }}" class="btn btn-sm btn-info">詳細</a>
+                        <a href="{{ url_for('system_admin.tenant_edit', tid=t.id) }}" class="btn btn-sm btn-warning">編集</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>テナントが登録されていません。</p>
+    {% endif %}
+    
+    <div style="margin-top:20px;">
+        <a href="{{ url_for('system_admin.dashboard') }}" class="btn btn-secondary">ダッシュボードに戻る</a>
+    </div>
+</div>
+{% endblock %}
