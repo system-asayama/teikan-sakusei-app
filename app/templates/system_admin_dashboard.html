@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}システム管理者ダッシュボード{% endblock %}
+{% block content %}
+<h1>システム管理者ダッシュボード</h1>
+
+<div class="card">
+  <h2>ようこそ、{{ session.user_name }}さん</h2>
+  <p>システム管理者として全テナント横断の最高権限でログインしています。</p>
+  
+  <div style="margin-top:20px">
+    <h3>ロール情報</h3>
+    <ul>
+      <li><strong>ユーザーID:</strong> {{ session.user_id }}</li>
+      <li><strong>氏名:</strong> {{ session.user_name }}</li>
+      <li><strong>ロール:</strong> {{ session.role }}</li>
+      <li><strong>テナントID:</strong> {{ session.tenant_id or 'なし（全テナント管理可能）' }}</li>
+    </ul>
+  </div>
+
+  <div style="margin-top:30px">
+    <h3>管理機能</h3>
+    <p style="color:#666; margin-top:12px">管理機能は次のフェーズで実装予定です。</p>
+  </div>
+
+  <div style="margin-top:30px">
+    <a class="btn sub" href="{{ url_for('system_admin.mypage') }}">マイページ</a>
+    <a class="btn" href="{{ url_for('auth.logout') }}">ログアウト</a>
+  </div>
+</div>
+
+{% if get_flashed_messages() %}
+<div style="margin-top:20px">
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="alert alert-{{ category }}">{{ message }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

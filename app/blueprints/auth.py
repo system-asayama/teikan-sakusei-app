@@ -15,7 +15,7 @@ def index():
     """トップページ - ロール別リダイレクト"""
     role = session.get("role")
     if role == ROLES["SYSTEM_ADMIN"]:
-        return redirect(url_for('auth.system_admin_dashboard'))
+        return redirect(url_for('system_admin.mypage'))
     if role == ROLES["TENANT_ADMIN"]:
         return redirect(url_for('auth.tenant_admin_dashboard'))
     if role == ROLES["ADMIN"]:
@@ -109,7 +109,7 @@ def system_admin_login():
             if row and check_password_hash(row[2], password):
                 user_id, name, tenant_id = row[0], row[1], row[3]
                 login_user(user_id, name, ROLES["SYSTEM_ADMIN"], tenant_id)
-                return redirect(url_for('auth.system_admin_dashboard'))
+                return redirect(url_for('system_admin.mypage'))
             error = "ログインIDまたはパスワードが違います"
         finally:
             try: conn.close()

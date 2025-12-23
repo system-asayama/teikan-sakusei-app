@@ -62,6 +62,13 @@ def create_app() -> Flask:
     except Exception:
         pass
 
+    # blueprints/system_admin.py があれば登録
+    try:
+        from .blueprints.system_admin import bp as system_admin_bp  # type: ignore
+        app.register_blueprint(system_admin_bp)
+    except Exception:
+        pass
+
     # テンプレート用のget_csrf関数を登録
     try:
         from .utils.security import get_csrf  # type: ignore
