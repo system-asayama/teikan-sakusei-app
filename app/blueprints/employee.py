@@ -5,15 +5,14 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from app.utils.db import get_db, _sql
-from app.utils.decorators import login_required, role_required, ROLES
+from app.utils.decorators import require_roles, ROLES
 from app.utils.security import hash_password, verify_password
 
 bp = Blueprint('employee', __name__, url_prefix='/employee')
 
 
 @bp.route('/mypage', methods=['GET', 'POST'])
-@login_required
-@role_required(ROLES['TENANT_ADMIN'])
+@require_roles(ROLES['EMPLOYEE'])
 def mypage():
     """管理者マイページ"""
     conn = get_db()
@@ -130,8 +129,7 @@ def mypage():
 
 
 @bp.route('/dashboard')
-@login_required
-@role_required(ROLES['TENANT_ADMIN'])
+@require_roles(ROLES['EMPLOYEE'])
 def dashboard():
     """管理者ダッシュボード"""
     return render_template('employee_dashboard.html')
