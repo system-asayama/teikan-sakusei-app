@@ -17,11 +17,11 @@ def index():
     if role == ROLES["SYSTEM_ADMIN"]:
         return redirect(url_for('system_admin.mypage'))
     if role == ROLES["TENANT_ADMIN"]:
-        return redirect(url_for('auth.tenant_admin_dashboard'))
+        return redirect(url_for('tenant_admin.mypage'))
     if role == ROLES["ADMIN"]:
-        return redirect(url_for('auth.admin_dashboard'))
+        return redirect(url_for('admin.mypage'))
     if role == ROLES["EMPLOYEE"]:
-        return redirect(url_for('auth.employee_dashboard'))
+        return redirect(url_for('employee.mypage'))
     return redirect(url_for('auth.select_login'))
 
 
@@ -133,7 +133,7 @@ def tenant_admin_login():
             if row and check_password_hash(row[2], password):
                 user_id, name, tenant_id = row[0], row[1], row[3]
                 login_user(user_id, name, ROLES["TENANT_ADMIN"], tenant_id)
-                return redirect(url_for('auth.tenant_admin_dashboard'))
+                return redirect(url_for('tenant_admin.mypage'))
             else:
                 error = "ログインIDまたはパスワードが違います"
         finally:
@@ -158,7 +158,7 @@ def admin_login():
             if row and check_password_hash(row[2], password):
                 user_id, name, tenant_id = row[0], row[1], row[3]
                 login_user(user_id, name, ROLES["ADMIN"], tenant_id)
-                return redirect(url_for('auth.admin_dashboard'))
+                return redirect(url_for('admin.mypage'))
             else:
                 error = "ログインIDまたはパスワードが違います"
         finally:
@@ -184,7 +184,7 @@ def employee_login():
             if row and check_password_hash(row[2], password):
                 user_id, name, tenant_id = row[0], row[1], row[3]
                 login_user(user_id, name, ROLES["EMPLOYEE"], tenant_id)
-                return redirect(url_for('auth.employee_dashboard'))
+                return redirect(url_for('employee.mypage'))
             else:
                 error = "ログインIDまたはパスワードが違います"
         finally:
