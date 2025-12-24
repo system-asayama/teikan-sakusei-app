@@ -37,8 +37,12 @@
         <div class="user-role">
           {% if session.get('role') == 'system_admin' %}
             システム管理者
+          {% elif session.get('role') == 'tenant_admin' %}
+            テナント管理者
           {% elif session.get('role') == 'admin' %}
             管理者
+          {% elif session.get('role') == 'employee' %}
+            従業員
           {% endif %}
           {% if session.get('is_owner') %}
             <span class="owner-badge">オーナー</span>

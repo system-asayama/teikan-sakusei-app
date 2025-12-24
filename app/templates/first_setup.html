@@ -4,13 +4,9 @@
 
 <div class="card" style="max-width:720px">
   <p class="small" style="color:#555">
-    ※ まだ管理者が1人もいないため、このページが表示されています。<br>
+    ※ まだ開発者（管理者）が1人もいないため、このページが表示されています。<br>
     作成後はこのページは表示されなくなります。
   </p>
-
-  {% if error %}
-    <div class="alert alert-error">{{ error }}</div>
-  {% endif %}
 
   <form method="post" action="{{ url_for('auth.first_admin_setup') }}" autocomplete="off">
     <input type="hidden" name="csrf_token" value="{{ get_csrf() }}">
@@ -32,7 +28,7 @@
     </div>
 
     <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
-      <button class="btn btn-primary" type="submit">sysadmin を作成する</button>
+      <button class="btn" type="submit">sysadmin を作成する</button>
     </div>
   </form>
 </div>

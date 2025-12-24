@@ -1,40 +1,53 @@
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <title>管理者ログイン - 定款作成システム</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body{font-family:sans-serif;margin:24px}
-    .card{max-width:420px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:12px}
-    h1{font-size:20px;margin:0 0 12px}
-    label{display:block;margin:10px 0 4px}
-    input[type=text],input[type=password]{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box}
-    .btn{margin-top:14px;padding:10px 14px;border:0;border-radius:8px;background:#222;color:#fff;cursor:pointer;width:100%}
-    .error{background:#ffe8e8;color:#b00020;padding:10px;border-radius:8px;margin-bottom:12px}
-    .muted{color:#666;font-size:13px}
-    .link{display:block;text-align:center;margin-top:14px}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>管理者ログイン</h1>
+{% extends "base.html" %}
+{% block title %}管理者ログイン - 定款作成システム{% endblock %}
+{% block header %}管理者ログイン{% endblock %}
 
-    {% if error %}
-      <div class="error">{{ error }}</div>
-    {% endif %}
+{% block content %}
+<div class="card" style="max-width:480px; margin: 2rem auto;">
+  <h2 style="margin-top: 0;">🔐 管理者ログイン</h2>
+  
+  {% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
 
-    <form method="post">
-      <label for="login_id">ログインID</label>
-      <input id="login_id" name="login_id" type="text" required autofocus>
+  <form method="post" autocomplete="off">
+    <div class="grid">
+      <div>
+        <label for="login_id">ログインID</label>
+        <input 
+          type="text" 
+          id="login_id" 
+          name="login_id" 
+          required 
+          placeholder="例: admin"
+          autofocus
+        >
+      </div>
 
-      <label for="password">パスワード</label>
-      <input id="password" name="password" type="password" required>
+      <div>
+        <label for="password">パスワード</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          required 
+          placeholder="パスワードを入力"
+        >
+      </div>
 
-      <button class="btn" type="submit">ログイン</button>
-    </form>
+      <div style="margin-top: 12px; display: flex; gap: 8px;">
+        <button type="submit" class="btn btn-primary">ログイン</button>
+        <a href="{{ url_for('auth.select_login') }}" class="btn">戻る</a>
+      </div>
+    </div>
+  </form>
 
-    <a class="link" href="{{ url_for('auth.select_login') }}">← ログイン選択に戻る</a>
+  <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #ddd; text-align: center; font-size: 0.85rem; color: #666;">
+    <p>
+      デフォルトログイン情報<br>
+      ログインID: <strong>admin</strong><br>
+      パスワード: <strong>admin12345</strong>
+    </p>
   </div>
-</body>
-</html>
+</div>
+{% endblock %}
