@@ -11,9 +11,9 @@ from flask import session, redirect, url_for, flash
 # 役割定義
 # ===========================
 ROLES = {
-    "SYSTEM_ADMIN":  "system_admin",     # 全テナント横断の最高権限
-    "TENANT_ADMIN":  "tenant_admin",     # テナント管理者
-    "ADMIN":         "admin",            # 一般管理者
+    "SYSTEM_ADMIN": "system_admin",     # 全テナント横断の最高権限
+    "TENANT_ADMIN": "tenant_admin",     # テナント単位の管理者
+    "ADMIN":        "admin",            # 店舗/拠点などの管理者
     "EMPLOYEE":      "employee",         # 従業員
 }
 
@@ -35,7 +35,7 @@ def require_roles(*allowed_roles):
 def current_tenant_filter_sql(col_expr: str):
     """
     system_admin 以外は tenant_id で絞る WHERE句 と パラメタを返す。
-    col_expr 例: '"T_定款"."tenant_id"'
+    col_expr 例: '"T_従業員"."tenant_id"'
     戻り値: (where_sql, params_tuple)
     """
     role = session.get("role")
