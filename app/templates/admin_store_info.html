@@ -187,6 +187,7 @@
             <td class="store-actions">
               <a class="btn small" href="{{ url_for('tenant_admin.store_detail', store_id=store.id) }}">詳細</a>
               <a class="btn small" href="{{ url_for('admin.store_edit', store_id=store.id) }}">編集</a>
+              <a class="btn small" href="{{ url_for('admin.store_apps', store_id=store.id) }}">アプリ管理</a>
             </td>
           </tr>
           {% endfor %}

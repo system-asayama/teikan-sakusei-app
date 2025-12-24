@@ -1043,3 +1043,40 @@ def select_store_from_mypage():
     flash('店舗を選択しました', 'success')
     return redirect(url_for('admin.dashboard'))
 
+
+# ===== 店舗アプリ一覧 =====
+@bp.route('/store/<int:store_id>/apps')
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def store_apps(store_id):
+    """店舗アプリ一覧ページ"""
+    tenant_id = session.get('tenant_id')
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 店舗情報を取得
+    cur.execute(_sql(conn, '''
+        SELECT id, 名称, slug
+        FROM "T_店舗"
+        WHERE id = %s
+    '''), (store_id,))
+    
+    store_row = cur.fetchone()
+    conn.close()
+    
+    if not store_row:
+        flash('店舗が見つかりません', 'error')
+        return redirect(url_for('admin.store_info'))
+    
+    store = {
+        'id': store_row[0],
+        'store_name': store_row[1],
+        'slug': store_row[2]
+    }
+    
+    # セッションにstore_idを設定
+    session['store_id'] = store_id
+    session['store_name'] = store_row[1]
+    
+    return render_template('admin_store_apps.html', store=store)
+
