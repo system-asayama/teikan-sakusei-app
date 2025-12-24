@@ -6,6 +6,7 @@
 from .db import get_db, get_db_connection, init_schema, _is_pg, _sql
 from .security import login_user, admin_exists, get_csrf, is_owner, can_manage_system_admins, is_tenant_owner, can_manage_tenant_admins
 from .decorators import require_roles, current_tenant_filter_sql, ROLES
+from .owner_management import ensure_tenant_owner
 
 __all__ = [
     'get_db',
@@ -23,4 +24,5 @@ __all__ = [
     'require_roles',
     'current_tenant_filter_sql',
     'ROLES',
+    'ensure_tenant_owner',
 ]
