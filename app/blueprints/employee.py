@@ -1,135 +1,184 @@
-# -*- coding: utf-8 -*-
 """
-管理者用Blueprint
+従業員マイページ
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from app.utils.db import get_db, _sql
-from app.utils.decorators import require_roles, ROLES
-from app.utils.security import hash_password, verify_password
+from flask import Blueprint, render_template, session, redirect, url_for, flash, request
+from werkzeug.security import generate_password_hash, check_password_hash
+from ..utils import require_roles, ROLES
+from ..utils.db import get_db_connection, _sql
 
 bp = Blueprint('employee', __name__, url_prefix='/employee')
 
 
+@bp.route('/dashboard')
+@require_roles(ROLES["EMPLOYEE"], ROLES["SYSTEM_ADMIN"])
+def dashboard():
+    """従業員ダッシュボード"""
+    # ロールに応じたマイページURLを設定
+    role = session.get('role')
+    if role == 'system_admin':
+        mypage_url = url_for('system_admin.mypage')
+    else:
+        mypage_url = url_for('employee.mypage')
+    return render_template('employee_dashboard.html', mypage_url=mypage_url)
+
+
 @bp.route('/mypage', methods=['GET', 'POST'])
-@require_roles(ROLES['SYSTEM_ADMIN'], ROLES['TENANT_ADMIN'], ROLES['ADMIN'], ROLES['EMPLOYEE'])
+@require_roles(ROLES["EMPLOYEE"], ROLES["SYSTEM_ADMIN"])
 def mypage():
-    """管理者マイページ"""
-    conn = get_db()
+    """従業員マイページ"""
+    user_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    conn = get_db_connection()
     cur = conn.cursor()
     
-    user_id = session.get('user_id')
+    # ユーザー情報を取得
+    cur.execute(_sql(conn, '''
+        SELECT id, login_id, name, email, created_at, updated_at
+        FROM "T_従業員"
+        WHERE id = %s
+    '''), (user_id,))
     
+    row = cur.fetchone()
+    
+    if not row:
+        flash('ユーザー情報が見つかりません', 'error')
+        conn.close()
+        return redirect(url_for('employee.dashboard'))
+    
+    user = {
+        'id': row[0],
+        'login_id': row[1],
+        'name': row[2],
+        'email': row[3],
+        'created_at': row[4],
+        'updated_at': row[5]
+    }
+    
+    # テナント名を取得
+    cur.execute(_sql(conn, 'SELECT 名称 FROM "T_テナント" WHERE id = %s'), (tenant_id,))
+    tenant_row = cur.fetchone()
+    tenant_name = tenant_row[0] if tenant_row else '不明'
+    
+    # 所属店舗を取得（表示用）
+    cur.execute(_sql(conn, '''
+        SELECT s.名称
+        FROM "T_店舗" s
+        INNER JOIN "T_従業員_店舗" es ON s.id = es.store_id
+        WHERE es.employee_id = %s
+    '''), (user_id,))
+    stores = [row[0] for row in cur.fetchall()]
+    
+    # 所属店舗を取得（選択用）
+    cur.execute(_sql(conn, '''
+        SELECT s.id, s.名称
+        FROM "T_店舗" s
+        INNER JOIN "T_従業員_店舗" es ON s.id = es.store_id
+        WHERE es.employee_id = %s
+    '''), (user_id,))
+    store_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+    
+    # POSTリクエスト（プロフィール編集またはパスワード変更）
     if request.method == 'POST':
-        action = request.form.get('action')
+        action = request.form.get('action', '')
         
         if action == 'update_profile':
-            # プロフィール更新
+            # プロフィール編集
             login_id = request.form.get('login_id', '').strip()
             name = request.form.get('name', '').strip()
             email = request.form.get('email', '').strip()
             
             if not login_id or not name:
+                conn.close()
                 flash('ログインIDと氏名は必須です', 'error')
-                return redirect(url_for('employee.mypage'))
+                return render_template('employee_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
             
-            # ログインID重複チェック
-            cur.execute(_sql(conn, '''
-                SELECT id FROM "T_管理者"
-                WHERE login_id = %s AND id != %s
-            '''), (login_id, user_id))
+            # ログインID重複チェック（自分以外）
+            cur.execute(_sql(conn, 'SELECT id FROM "T_従業員" WHERE login_id = %s AND id != %s'), (login_id, user_id))
             if cur.fetchone():
+                conn.close()
                 flash('このログインIDは既に使用されています', 'error')
-                return redirect(url_for('employee.mypage'))
+                return render_template('employee_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
             
-            # 更新
+            # プロフィール更新
             cur.execute(_sql(conn, '''
-                UPDATE "T_管理者"
+                UPDATE "T_従業員"
                 SET login_id = %s, name = %s, email = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             '''), (login_id, name, email, user_id))
-            if not conn.__class__.__module__.startswith("psycopg2"):
-                conn.commit()
+            conn.commit()
+            conn.close()
             
-            # セッション更新
-            session['login_id'] = login_id
-            session['user_name'] = name
-            
-            flash('プロフィールを更新しました', 'success')
+            flash('プロフィール情報を更新しました', 'success')
             return redirect(url_for('employee.mypage'))
         
         elif action == 'change_password':
             # パスワード変更
-            current_password = request.form.get('current_password', '')
-            new_password = request.form.get('new_password', '')
-            confirm_password = request.form.get('confirm_password', '')
+            current_password = request.form.get('current_password', '').strip()
+            new_password = request.form.get('new_password', '').strip()
+            new_password_confirm = request.form.get('new_password_confirm', '').strip()
             
-            if not current_password or not new_password or not confirm_password:
-                flash('すべてのパスワードフィールドを入力してください', 'error')
-                return redirect(url_for('employee.mypage'))
+            # パスワード一致チェック
+            if new_password != new_password_confirm:
+                flash('パスワードが一致しません', 'error')
+                conn.close()
+                return render_template('employee_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
             
-            # 現在のパスワード確認
-            cur.execute(_sql(conn, '''
-                SELECT password_hash FROM "T_管理者" WHERE id = %s
-            '''), (user_id,))
+            # 現在のパスワードを確認
+            cur.execute(_sql(conn, 'SELECT password_hash FROM "T_従業員" WHERE id = %s'), (user_id,))
             row = cur.fetchone()
-            if not row:
-                flash('ユーザーが見つかりません', 'error')
-                return redirect(url_for('employee.mypage'))
-            
-            if not verify_password(current_password, row[0]):
+            if not row or not check_password_hash(row[0], current_password):
+                conn.close()
                 flash('現在のパスワードが正しくありません', 'error')
-                return redirect(url_for('employee.mypage'))
+                return render_template('employee_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
             
-            # 新しいパスワードの確認
-            if new_password != confirm_password:
-                flash('新しいパスワードと確認用パスワードが一致しません', 'error')
-                return redirect(url_for('employee.mypage'))
-            
-            if len(new_password) < 8:
-                flash('パスワードは8文字以上にしてください', 'error')
-                return redirect(url_for('employee.mypage'))
-            
-            # パスワード更新
-            new_hash = hash_password(new_password)
+            # パスワードを更新
+            password_hash = generate_password_hash(new_password)
             cur.execute(_sql(conn, '''
-                UPDATE "T_管理者"
+                UPDATE "T_従業員"
                 SET password_hash = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
-            '''), (new_hash, user_id))
-            if not conn.__class__.__module__.startswith("psycopg2"):
-                conn.commit()
+            '''), (password_hash, user_id))
+            conn.commit()
+            conn.close()
             
             flash('パスワードを変更しました', 'success')
             return redirect(url_for('employee.mypage'))
     
-    # ユーザー情報取得
+    conn.close()
+    return render_template('employee_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
+
+
+@bp.route('/select_store_from_mypage', methods=['POST'])
+@require_roles(ROLES["EMPLOYEE"], ROLES["SYSTEM_ADMIN"])
+def select_store_from_mypage():
+    """マイページから店舗を選択してダッシュボードに進む"""
+    user_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    store_id = request.form.get('store_id')
+    
+    if not store_id:
+        flash('店舗を選択してください', 'error')
+        return redirect(url_for('employee.mypage'))
+    
+    # 従業員が選択した店舗に所属しているか確認
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
     cur.execute(_sql(conn, '''
-        SELECT id, login_id, name, email, role, tenant_id, active, is_owner, can_manage_admins, created_at, updated_at
-        FROM "T_管理者"
-        WHERE id = %s
-    '''), (user_id,))
-    user = cur.fetchone()
+        SELECT COUNT(*) FROM "T_従業員_店舗"
+        WHERE employee_id = %s AND store_id = %s
+    '''), (user_id, store_id))
     
-    if not user:
-        flash('ユーザー情報が見つかりません', 'error')
-        return redirect(url_for('auth.logout'))
+    count = cur.fetchone()[0]
+    conn.close()
     
-    # テナント情報取得
-    tenant = None
-    if user[5]:  # tenant_id
-        cur.execute(_sql(conn, '''
-            SELECT id, 名称, slug FROM "T_テナント" WHERE id = %s
-        '''), (user[5],))
-        tenant = cur.fetchone()
+    if count == 0:
+        flash('選択した店舗にアクセスする権限がありません', 'error')
+        return redirect(url_for('employee.mypage'))
     
-    return render_template('employee_mypage.html',
-                         user=user,
-                         tenant=tenant)
-
-
-@bp.route('/dashboard')
-@require_roles(ROLES['SYSTEM_ADMIN'], ROLES['TENANT_ADMIN'], ROLES['ADMIN'], ROLES['EMPLOYEE'])
-def dashboard():
-    """管理者ダッシュボード"""
-    return render_template('employee_dashboard.html')
+    # セッションに店舗IDを保存
+    session['store_id'] = int(store_id)
+    
+    flash('店舗を選択しました', 'success')
+    return redirect(url_for('employee.dashboard'))

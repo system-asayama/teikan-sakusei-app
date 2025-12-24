@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スタンプカードプレビュー - {{ store_name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .preview-container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .preview-header {
+            background: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .preview-header h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .preview-header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .tab-container {
+            background: white;
+            display: flex;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: white;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .tab:hover {
+            background: #f8f9fa;
+        }
+        
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: 400px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .back-button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: white;
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 500;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        /* 登録画面のスタイル */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* マイページのスタイル */
+        .welcome-section {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-section h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .card-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .stamp-progress {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .stamp-count {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        
+        .stamp-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .stamp-cell {
+            aspect-ratio: 1;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: white;
+        }
+        
+        .stamp-cell.filled {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+        }
+        
+        .reward-section {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 20px;
+        }
+        
+        .reward-section h3 {
+            font-size: 16px;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        
+        .reward-section p {
+            color: #856404;
+            font-size: 14px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-scan {
+            flex: 1;
+            padding: 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .btn-reward {
+            flex: 1;
+            padding: 15px;
+            background: #ffc107;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        
+        .stats-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* スキャン画面のスタイル */
+        .scan-section {
+            text-align: center;
+        }
+        
+        .scan-section h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .scan-section p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .qr-scanner {
+            width: 100%;
+            height: 300px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            border: 2px dashed #ccc;
+        }
+        
+        .qr-scanner-placeholder {
+            text-align: center;
+            color: #999;
+        }
+        
+        .qr-scanner-placeholder .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .btn-camera {
+            width: 100%;
+            padding: 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        .scan-link {
+            display: block;
+            text-align: center;
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <a href="/admin/store/{{ store_id }}/apps" class="back-button">← アプリ一覧に戻る</a>
+        
+        <div class="preview-header">
+            <h1>🎟️ スタンプカードプレビュー</h1>
+            <p>{{ store_name }}</p>
+        </div>
+        
+        <div class="tab-container">
+            <button class="tab active" onclick="switchTab('register')">登録画面</button>
+            <button class="tab" onclick="switchTab('login')">ログイン画面</button>
+            <button class="tab" onclick="switchTab('mypage')">マイページ</button>
+            <button class="tab" onclick="switchTab('scan')">スキャン画面</button>
+        </div>
+        
+        <!-- 登録画面 -->
+        <div id="register" class="tab-content active">
+            <form>
+                <div class="form-group">
+                    <label for="name">お名前 *</label>
+                    <input type="text" id="name" placeholder="山田 太郎" value="プレビュー 太郎" disabled>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">電話番号</label>
+                    <input type="tel" id="phone" placeholder="090-1234-5678" value="090-1234-5678" disabled>
+                    <div class="form-note">電話番号またはメールアドレスのどちらかは必須です</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">メールアドレス</label>
+                    <input type="email" id="email" placeholder="email@example.com" disabled>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">パスワード *</label>
+                    <input type="password" id="password" placeholder="••••••" disabled>
+                    <div class="form-note">6文字以上で設定してください</div>
+                </div>
+                
+                <button type="button" class="btn-primary" disabled>登録する</button>
+                
+                <p style="text-align: center; margin-top: 20px; color: #666;">
+                    既にアカウントをお持ちの方は <a href="#" style="color: #667eea;">ログイン</a>
+                </p>
+            </form>
+        </div>
+        
+        <!-- ログイン画面 -->
+        <div id="login" class="tab-content">
+            <h2 style="text-align: center; color: #333; margin-bottom: 20px; font-size: 22px;">スタンプカードログイン</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 30px;">{{ store_name }}</p>
+            
+            <form>
+                <div class="form-group">
+                    <label for="login_id">電話番号またはメールアドレス</label>
+                    <input type="text" id="login_id" placeholder="090-1234-5678 または email@example.com" value="090-1234-5678" disabled>
+                </div>
+                
+                <div class="form-group">
+                    <label for="login_password">パスワード</label>
+                    <input type="password" id="login_password" placeholder="••••••" disabled>
+                </div>
+                
+                <button type="button" class="btn-primary" disabled>ログイン</button>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <p style="color: #666; margin-bottom: 12px;">アカウントをお持ちでない方は</p>
+                    <a href="#" style="display: inline-block; padding: 12px 24px; background: #2196F3; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">新規登録</a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- マイページ -->
+        <div id="mypage" class="tab-content">
+            <div class="welcome-section">
+                <h2>ようこそ、{{ preview_data.customer_name }}さん</h2>
+            </div>
+            
+            <div class="card-section">
+                <div class="card-title">{{ preview_data.card_title }}</div>
+                
+                <div class="stamp-progress">
+                    <div class="stamp-count">{{ preview_data.current_stamps }} / {{ preview_data.required_stamps }} スタンプ</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ (preview_data.current_stamps / preview_data.required_stamps * 100)|int }}%"></div>
+                    </div>
+                </div>
+                
+                <div class="stamp-grid">
+                    {% for i in range(1, preview_data.required_stamps + 1) %}
+                        <div class="stamp-cell {% if i <= preview_data.current_stamps %}filled{% endif %}">
+                            {% if i <= preview_data.current_stamps %}✓{% else %}{{ i }}{% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="reward-section">
+                <h3>🎁 特典内容</h3>
+                <p>{{ preview_data.reward_description }}</p>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn-scan">📷 QRコードをスキャン</button>
+                <button class="btn-reward">🎁 特典を使用する (あと{{ preview_data.required_stamps - preview_data.current_stamps }}個)</button>
+            </div>
+            
+            <div class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-value">{{ preview_data.total_stamps }}</div>
+                    <div class="stat-label">累計スタンプ</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ preview_data.rewards_used }}</div>
+                    <div class="stat-label">特典利用回数</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- スキャン画面 -->
+        <div id="scan" class="tab-content">
+            <div class="scan-section">
+                <h2>QRコードをスキャン</h2>
+                <p>店舗に設置されているQRコードをスキャンして、スタンプを獲得しましょう！</p>
+                
+                <div class="qr-scanner">
+                    <div class="qr-scanner-placeholder">
+                        <div class="icon">📷</div>
+                        <div>カメラでQRコードをスキャン</div>
+                    </div>
+                </div>
+                
+                <button class="btn-camera">カメラを起動</button>
+                
+                <a href="#" class="scan-link">← マイページに戻る</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function switchTab(tabName) {
+            // タブボタンの切り替え
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // タブコンテンツの切り替え
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+        }
+    </script>
+</body>
+</html>

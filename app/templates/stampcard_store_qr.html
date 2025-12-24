@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}店舗用QRコード - {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="qr-card">
+    <h1>スタンプカード QRコード</h1>
+    <p class="store-name">{{ store_name }}</p>
+    
+    <div class="qr-instructions">
+      <p>このQRコードをお客様にスキャンしてもらうと、スタンプが付与されます。</p>
+      <p>店舗内の見やすい場所に設置してください。</p>
+    </div>
+    
+    <div class="qr-code-wrapper">
+      <div id="qrcode"></div>
+    </div>
+    
+    <div class="qr-url">
+      <p>スキャン用URL:</p>
+      <input type="text" id="scan-url" value="{{ url_for('stampcard.scan_qr', store_slug=store_slug, _external=True) }}" readonly>
+      <button onclick="copyUrl()" class="btn btn-primary">URLをコピー</button>
+    </div>
+    
+    <div class="print-button">
+      <button onclick="window.print()" class="btn btn-secondary">印刷する</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// QRコードを生成
+const scanUrl = "{{ url_for('stampcard.scan_qr', store_slug=store_slug, _external=True) }}";
+new QRCode(document.getElementById("qrcode"), {
+  text: scanUrl,
+  width: 300,
+  height: 300,
+  colorDark: "#000000",
+  colorLight: "#ffffff",
+  correctLevel: QRCode.CorrectLevel.H
+});
+
+function copyUrl() {
+  const urlInput = document.getElementById('scan-url');
+  urlInput.select();
+  document.execCommand('copy');
+  alert('URLをコピーしました！');
+}
+</script>
+
+<style>
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .qr-card {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 24px;
+  }
+  
+  .store-name {
+    text-align: center;
+    color: #666;
+    margin-bottom: 24px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  
+  .qr-instructions {
+    background: #e8f5e9;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 32px;
+    text-align: center;
+  }
+  
+  .qr-instructions p {
+    color: #2e7d32;
+    margin: 8px 0;
+    line-height: 1.6;
+  }
+  
+  .qr-code-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 32px;
+    padding: 24px;
+    background: #f8f9fa;
+    border-radius: 12px;
+  }
+  
+  #qrcode {
+    display: inline-block;
+  }
+  
+  #qrcode img {
+    border: 8px solid white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .qr-url {
+    margin-bottom: 24px;
+  }
+  
+  .qr-url p {
+    color: #666;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  
+  #scan-url {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+  }
+  
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-primary {
+    background: #4CAF50;
+    color: white;
+    margin-bottom: 12px;
+  }
+  
+  .btn-primary:hover {
+    background: #45a049;
+  }
+  
+  .btn-secondary {
+    background: #2196F3;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background: #0b7dda;
+  }
+  
+  @media print {
+    .container {
+      max-width: 100%;
+    }
+    
+    .qr-instructions,
+    .qr-url,
+    .print-button {
+      display: none;
+    }
+    
+    .qr-card {
+      box-shadow: none;
+      border: 2px solid #000;
+    }
+    
+    h1 {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    
+    .store-name {
+      font-size: 24px;
+      margin-bottom: 48px;
+    }
+    
+    .qr-code-wrapper {
+      padding: 48px;
+    }
+    
+    #qrcode img {
+      width: 400px !important;
+      height: 400px !important;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .container {
+      padding: 16px;
+    }
+    
+    .qr-card {
+      padding: 24px;
+    }
+  }
+</style>
+{% endblock %}

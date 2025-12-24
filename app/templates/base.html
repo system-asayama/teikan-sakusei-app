@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>{% block title %}定款作成システム{% endblock %}</title>
+  <title>{% block title %}ログインシステム{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 2rem; }
@@ -30,7 +30,7 @@
 <body>
   <div class="container">
     <header>
-      <h1 style="margin:0;">{% block header %}定款作成システム{% endblock %}</h1>
+      <h1 style="margin:0;">{% block header %}ログインシステム{% endblock %}</h1>
       {% if session.get('user_id') %}
       <div class="user-info">
         <div class="user-name">{{ session.get('user_name', '') }}</div>
@@ -40,8 +40,8 @@
           {% elif session.get('role') == 'tenant_admin' %}
             テナント管理者
           {% elif session.get('role') == 'admin' %}
-            管理者
-          {% elif session.get('role') == 'employee' %}
+            店舗管理者
+          {% elif session.get('is_employee') %}
             従業員
           {% endif %}
           {% if session.get('is_owner') %}
@@ -66,7 +66,7 @@
 
     {% block content %}{% endblock %}
 
-    <footer>© {{ 2025 }} 定款作成システム</footer>
+    <footer>© {{ 2025 }} 会計アプリ</footer>
   </div>
 </body>
 </html>

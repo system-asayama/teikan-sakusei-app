@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}従業員新規作成{% endblock %}
+{% block content %}
+<h1>従業員新規作成</h1>
+<form method="post">
+  <div class="card" style="max-width:500px">
+    <div class="row">
+      <label for="login_id">ログインID</label>
+      <input id="login_id" name="login_id" type="text" required autofocus>
+    </div>
+    
+    <div class="row">
+      <label for="name">氏名</label>
+      <input id="name" name="name" type="text" required>
+    </div>
+    
+    <div class="row">
+      <label for="email">メールアドレス</label>
+      <input id="email" name="email" type="email" required>
+    </div>
+    
+    <div class="row">
+      <label for="password">パスワード</label>
+      <input id="password" name="password" type="password" required minlength="8" placeholder="8文字以上">
+    </div>
+    
+    <div class="row">
+      <label for="password_confirm">パスワード（確認）</label>
+      <input id="password_confirm" name="password_confirm" type="password" required minlength="8" placeholder="もう一度入力">
+    </div>
+    
+    <div class="row">
+      <label style="font-weight:bold">勤務する店舗（複数選択可）</label>
+      {% if stores %}
+        <div style="border:1px solid #ccc;padding:12px;max-height:200px;overflow-y:auto">
+          {% for store in stores %}
+          <div style="margin-bottom:8px">
+            <label style="display:flex;align-items:center;cursor:pointer">
+              <input type="checkbox" name="store_ids" value="{{ store.id }}" style="margin-right:8px">
+              <span>{{ store.名称 }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="color:#999">店舗が登録されていません。先に店舗を作成してください。</p>
+      {% endif %}
+    </div>
+    
+    <div class="actions" style="margin-top:20px; display:flex; gap:10px">
+      <button class="btn" type="submit" {% if not stores %}disabled{% endif %}>作成</button>
+      <a class="btn sub" href="{{ back_url }}">キャンセル</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

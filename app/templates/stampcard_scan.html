@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}QRコードスキャン - {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="scan-card">
+    <h1>QRコードをスキャン</h1>
+    <p class="store-name">{{ store_name }}</p>
+    
+    <div class="scan-instructions">
+      <p>店舗に設置されているQRコードをスキャンして、スタンプを獲得しましょう！</p>
+    </div>
+    
+    <div class="qr-scanner">
+      <div id="reader"></div>
+    </div>
+    
+    <form id="scanForm" method="POST" action="{{ url_for('stampcard.scan_qr', store_slug=request.view_args.store_slug) }}">
+      <input type="hidden" name="qr_data" id="qr_data">
+    </form>
+    
+    <div class="back-link">
+      <a href="{{ url_for('stampcard.customer_mypage', store_slug=request.view_args.store_slug) }}">&larr; マイページに戻る</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+function onScanSuccess(decodedText, decodedResult) {
+  // QRコードが読み取れたら、フォームを送信
+  document.getElementById('qr_data').value = decodedText;
+  document.getElementById('scanForm').submit();
+}
+
+function onScanFailure(error) {
+  // スキャン失敗時は何もしない（エラーログを出さない）
+}
+
+// QRコードスキャナーを初期化
+const html5QrcodeScanner = new Html5QrcodeScanner(
+  "reader",
+  { 
+    fps: 10,
+    qrbox: { width: 250, height: 250 },
+    aspectRatio: 1.0
+  },
+  false
+);
+
+html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+</script>
+
+<style>
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .scan-card {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 24px;
+  }
+  
+  .store-name {
+    text-align: center;
+    color: #666;
+    margin-bottom: 24px;
+    font-size: 16px;
+  }
+  
+  .scan-instructions {
+    background: #e3f2fd;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  
+  .scan-instructions p {
+    color: #1976d2;
+    margin: 0;
+    line-height: 1.6;
+  }
+  
+  .qr-scanner {
+    margin-bottom: 24px;
+  }
+  
+  #reader {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .back-link {
+    text-align: center;
+  }
+  
+  .back-link a {
+    color: #2196F3;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .back-link a:hover {
+    text-decoration: underline;
+  }
+  
+  @media (max-width: 768px) {
+    .container {
+      padding: 16px;
+    }
+    
+    .scan-card {
+      padding: 24px;
+    }
+  }
+</style>
+{% endblock %}

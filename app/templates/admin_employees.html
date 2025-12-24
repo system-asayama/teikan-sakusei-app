@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}従業員一覧{% endblock %}
+{% block content %}
+<style>
+  /* スマホ用カード型レイアウト */
+  @media (max-width: 768px) {
+    .employee-table {
+      display: none;
+    }
+    
+    .employee-cards {
+      display: block;
+    }
+    
+    .employee-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .employee-card-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .employee-card-row:last-child {
+      border-bottom: none;
+    }
+    
+    .employee-card-label {
+      font-weight: bold;
+      color: #666;
+      min-width: 100px;
+    }
+    
+    .employee-card-value {
+      text-align: right;
+      flex: 1;
+    }
+    
+    .employee-card-actions {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 2px solid #f0f0f0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .employee-card-actions .btn,
+    .employee-card-actions button {
+      font-size: 0.9em !important;
+      padding: 6px 12px !important;
+    }
+  }
+  
+  /* PC用テーブルレイアウト */
+  @media (min-width: 769px) {
+    .employee-table {
+      display: table;
+    }
+    
+    .employee-cards {
+      display: none;
+    }
+  }
+</style>
+
+<h1>従業員一覧</h1>
+
+<div style="margin-bottom:20px">
+  <a class="btn" href="{{ url_for('admin.employee_new') }}">新規作成</a>
+  <a class="btn sub" href="{{ url_for('admin.dashboard') }}">戻る</a>
+</div>
+
+{% if employees %}
+<!-- PC用テーブル表示 -->
+<table class="employee-table" style="width:100%;border-collapse:collapse;font-size:0.85em">
+  <thead>
+    <tr style="background:#f5f5f5;border-bottom:2px solid #ddd">
+      <th style="padding:8px;text-align:left;white-space:nowrap">ID</th>
+      <th style="padding:8px;text-align:left;white-space:nowrap">ログインID</th>
+      <th style="padding:8px;text-align:left;white-space:nowrap">氏名</th>
+      <th style="padding:8px;text-align:left;white-space:nowrap">有効</th>
+      <th style="padding:8px;text-align:left;white-space:nowrap">作成日時</th>
+      <th style="padding:8px;text-align:left;white-space:nowrap">操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in employees %}
+    <tr style="border-bottom:1px solid #eee">
+      <td style="padding:8px;white-space:nowrap">{{ e.id }}</td>
+      <td style="padding:8px;white-space:nowrap"><code>{{ e.login_id }}</code></td>
+      <td style="padding:8px;white-space:nowrap"><strong>{{ e.name }}</strong></td>
+      <td style="padding:8px;white-space:nowrap">
+        {% if e.active == 1 %}
+          <span style="color:green">✓ 有効</span>
+        {% else %}
+          <span style="color:#999">無効</span>
+        {% endif %}
+      </td>
+      <td style="padding:8px;white-space:nowrap;color:#666">{{ e.created_at }}</td>
+      <td style="padding:8px;white-space:nowrap">
+        <a class="btn small" href="{{ url_for('admin.employee_edit', employee_id=e.id) }}" style="font-size:0.9em;padding:4px 8px">編集</a>
+        <form method="post" action="{{ url_for('admin.employee_delete', employee_id=e.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？')">
+          <button class="btn small" type="submit" style="background:#d32f2f;font-size:0.9em;padding:4px 8px">削除</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- スマホ用カード表示 -->
+<div class="employee-cards">
+  {% for e in employees %}
+  <div class="employee-card">
+    <div class="employee-card-row">
+      <span class="employee-card-label">ID:</span>
+      <span class="employee-card-value">{{ e.id }}</span>
+    </div>
+    <div class="employee-card-row">
+      <span class="employee-card-label">ログインID:</span>
+      <span class="employee-card-value"><code>{{ e.login_id }}</code></span>
+    </div>
+    <div class="employee-card-row">
+      <span class="employee-card-label">氏名:</span>
+      <span class="employee-card-value"><strong>{{ e.name }}</strong></span>
+    </div>
+    <div class="employee-card-row">
+      <span class="employee-card-label">有効:</span>
+      <span class="employee-card-value">
+        {% if e.active == 1 %}
+          <span style="color:green">✓ 有効</span>
+        {% else %}
+          <span style="color:#999">無効</span>
+        {% endif %}
+      </span>
+    </div>
+    <div class="employee-card-row">
+      <span class="employee-card-label">作成日時:</span>
+      <span class="employee-card-value" style="color:#666">{{ e.created_at }}</span>
+    </div>
+    
+    <div class="employee-card-actions">
+      <a class="btn small" href="{{ url_for('admin.employee_edit', employee_id=e.id) }}">編集</a>
+      <form method="post" action="{{ url_for('admin.employee_delete', employee_id=e.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？')">
+        <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p style="color:#666">従業員が登録されていません。</p>
+{% endif %}
+
+{% endblock %}

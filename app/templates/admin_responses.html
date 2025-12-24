@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>回答データ一覧 - 管理画面</title>
+  <link rel="stylesheet" href="/static/slot.css">
+  <style>
+    body {
+      background: #f3f4f6;
+    }
+    .admin-header {
+      background: white;
+      padding: 16px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .admin-header h1 {
+      font-size: 20px;
+      margin: 0;
+      color: #1f2937;
+    }
+    .admin-header .user-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .admin-header .user-name {
+      font-size: 14px;
+      color: #6b7280;
+    }
+    .btn-logout {
+      padding: 8px 16px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 32px auto;
+      padding: 0 24px;
+    }
+    .section {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .section h2 {
+      font-size: 18px;
+      margin: 0 0 20px 0;
+      color: #1f2937;
+    }
+    .btn-primary {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin-right: 12px;
+    }
+    .btn-secondary {
+      padding: 10px 20px;
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .response-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      background: #fafafa;
+    }
+    .response-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .response-id {
+      font-weight: 700;
+      color: #1f2937;
+      font-size: 16px;
+    }
+    .response-date {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .response-rating {
+      color: #fbbf24;
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+    .response-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .detail-item {
+      font-size: 14px;
+    }
+    .detail-label {
+      color: #6b7280;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .detail-value {
+      color: #1f2937;
+    }
+    .response-comment {
+      background: white;
+      padding: 16px;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+      margin-top: 12px;
+    }
+    .response-comment h4 {
+      font-size: 14px;
+      color: #6b7280;
+      margin: 0 0 8px 0;
+      font-weight: 600;
+    }
+    .response-comment p {
+      margin: 0;
+      color: #374151;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="admin-header">
+    <h1>📋 回答データ一覧</h1>
+    <div class="user-info">
+      <span class="user-name">{{ admin.name }} ({{ admin.store_code }})</span>
+      <a href="{{ url_for('survey_admin.admin_logout') }}" class="btn-logout">ログアウト</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h2>全回答データ（{{ responses|length }}件）</h2>
+        <div>
+          <a href="{{ url_for('survey_admin.admin_dashboard') }}" class="btn-secondary">← ダッシュボードに戻る</a>
+          <a href="{{ url_for('survey_admin.admin_export_csv') }}" class="btn-primary">CSVエクスポート</a>
+        </div>
+      </div>
+
+      {% if responses %}
+        {% for response in responses %}
+        <div class="response-card">
+          <div class="response-header">
+            <span class="response-id">#{{ response.id }}</span>
+            <span class="response-date">{{ response.timestamp[:19] }}</span>
+          </div>
+
+          <div class="response-rating">
+            {% for i in range(response.rating) %}★{% endfor %}
+            <span style="font-size: 16px; color: #6b7280;">({{ response.rating }}/5)</span>
+          </div>
+
+          <div class="response-details">
+            <div class="detail-item">
+              <div class="detail-label">訪問目的</div>
+              <div class="detail-value">{{ response.visit_purpose }}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">お店の雰囲気</div>
+              <div class="detail-value">{{ response.atmosphere|join(', ') }}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">おすすめ度</div>
+              <div class="detail-value">{{ response.recommend }}</div>
+            </div>
+          </div>
+
+          {% if response.comment %}
+          <div class="response-comment">
+            <h4>コメント</h4>
+            <p>{{ response.comment }}</p>
+          </div>
+          {% endif %}
+
+          {% if response.generated_review %}
+          <div class="response-comment" style="background: #eff6ff; border-color: #bfdbfe;">
+            <h4>AI生成レビュー</h4>
+            <p>{{ response.generated_review }}</p>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color: #6b7280; text-align: center; padding: 64px 0;">まだ回答がありません</p>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

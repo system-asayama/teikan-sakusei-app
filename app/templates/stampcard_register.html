@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}新規登録 - {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="register-card">
+    <h1>スタンプカード新規登録</h1>
+    <p class="store-name">{{ store_name }}</p>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    
+    <form method="POST" action="{{ url_for('stampcard.customer_register', store_slug=request.view_args.store_slug) }}">
+      <div class="form-group">
+        <label for="name">お名前 <span class="required">*</span></label>
+        <input type="text" id="name" name="name" required placeholder="山田 太郎">
+      </div>
+      
+      <div class="form-group">
+        <label for="phone">電話番号</label>
+        <input type="tel" id="phone" name="phone" placeholder="090-1234-5678">
+        <small>電話番号またはメールアドレスのいずれかは必須です</small>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">メールアドレス</label>
+        <input type="email" id="email" name="email" placeholder="email@example.com">
+      </div>
+      
+      <div class="form-group">
+        <label for="password">パスワード <span class="required">*</span></label>
+        <input type="password" id="password" name="password" required minlength="6">
+        <small>6文字以上で設定してください</small>
+      </div>
+      
+      <button type="submit" class="btn btn-primary">登録する</button>
+    </form>
+    
+    <div class="login-link">
+      <p>既にアカウントをお持ちの方は</p>
+      <a href="{{ url_for('stampcard.customer_login', store_slug=request.view_args.store_slug) }}" class="btn btn-secondary">ログイン</a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .register-card {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 24px;
+  }
+  
+  .store-name {
+    text-align: center;
+    color: #666;
+    margin-bottom: 24px;
+    font-size: 16px;
+  }
+  
+  .alert {
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  
+  .alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+  
+  .alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+  
+  .alert-warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 500;
+  }
+  
+  .required {
+    color: #f44336;
+  }
+  
+  input[type="text"],
+  input[type="tel"],
+  input[type="email"],
+  input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    box-sizing: border-box;
+  }
+  
+  input:focus {
+    outline: none;
+    border-color: #4CAF50;
+  }
+  
+  small {
+    display: block;
+    margin-top: 4px;
+    color: #666;
+    font-size: 13px;
+  }
+  
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-primary {
+    background: #4CAF50;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background: #45a049;
+  }
+  
+  .btn-secondary {
+    background: #2196F3;
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    background: #0b7dda;
+  }
+  
+  .login-link {
+    margin-top: 24px;
+    text-align: center;
+  }
+  
+  .login-link p {
+    color: #666;
+    margin-bottom: 12px;
+  }
+  
+  @media (max-width: 768px) {
+    .container {
+      padding: 16px;
+    }
+    
+    .register-card {
+      padding: 24px;
+    }
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}テナント管理者一覧{% endblock %}
+{% block content %}
+<style>
+  .tenant-admin-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+  .tenant-admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+  
+  .tenant-admin-table thead tr {
+    background: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+  }
+  
+  .tenant-admin-table th {
+    padding: 8px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  
+  .tenant-admin-table tbody tr {
+    border-bottom: 1px solid #eee;
+  }
+  
+  .tenant-admin-table tbody tr.owner-row {
+    background: #fffbf0;
+  }
+  
+  .tenant-admin-table td {
+    padding: 8px;
+    white-space: nowrap;
+  }
+  
+  .tenant-admin-table .btn.small {
+    font-size: 0.9em;
+    padding: 4px 8px;
+  }
+  
+  /* スマホ用カード型レイアウト */
+  @media (max-width: 768px) {
+    .tenant-admin-table-wrapper {
+      overflow-x: visible;
+    }
+    
+    .tenant-admin-table thead {
+      display: none;
+    }
+    
+    .tenant-admin-table tbody {
+      display: block;
+    }
+    
+    .tenant-admin-table tbody tr {
+      display: block;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    
+    .tenant-admin-table tbody tr.owner-row {
+      background: #fffbf0;
+      border-color: #ffd700;
+    }
+    
+    .tenant-admin-table td {
+      display: block;
+      padding: 8px 0;
+      white-space: normal;
+      border: none;
+    }
+    
+    .tenant-admin-table td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      display: inline-block;
+      width: 100px;
+      color: #374151;
+    }
+    
+    .tenant-admin-table td.admin-actions {
+      padding-top: 12px;
+      margin-top: 8px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .tenant-admin-table td.admin-actions::before {
+      display: none;
+    }
+    
+    .tenant-admin-table .btn.small {
+      display: inline-block;
+      margin: 4px 4px 4px 0;
+      font-size: 0.9em;
+      padding: 8px 12px;
+    }
+    
+    .tenant-admin-table td.admin-actions form {
+      display: inline-block;
+    }
+  }
+</style>
+
+<h1>テナント管理者一覧</h1>
+
+<div style="margin-bottom:20px">
+  <a class="btn" href="{{ url_for('tenant_admin.tenant_admin_new') }}">新規作成</a>
+  <a class="btn sub" href="{{ url_for('tenant_admin.dashboard') }}">戻る</a>
+</div>
+
+{% if tenant_admins %}
+<div class="tenant-admin-table-wrapper">
+  <table class="tenant-admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>ログインID</th>
+        <th>氏名</th>
+        <th>オーナー</th>
+        <th>管理権限</th>
+        <th>有効</th>
+        <th>作成日時</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ta in tenant_admins %}
+      <tr {% if ta.is_owner == 1 %}class="owner-row"{% endif %}>
+        <td data-label="ID: ">{{ ta.id }}</td>
+        <td data-label="ログインID: "><code>{{ ta.login_id }}</code></td>
+        <td data-label="氏名: "><strong>{{ ta.name }}</strong></td>
+        <td data-label="オーナー: ">
+          {% if ta.is_owner == 1 %}
+            <span style="color:#ff6f00;font-weight:bold">★ オーナー</span>
+          {% else %}
+            <span style="color:#999">-</span>
+          {% endif %}
+        </td>
+        <td data-label="管理権限: ">
+          {% if ta.is_owner == 1 %}
+            <span style="color:#999">（常に有）</span>
+          {% elif ta.can_manage_admins == 1 %}
+            <span style="color:green;font-weight:bold">✓ 有</span>
+          {% else %}
+            <span style="color:#999">無</span>
+          {% endif %}
+        </td>
+        <td data-label="有効: ">
+          {% if ta.active == 1 %}
+            <span style="color:green">✓ 有効</span>
+          {% else %}
+            <span style="color:#999">無効</span>
+          {% endif %}
+        </td>
+        <td data-label="作成日時: " style="color:#666">{{ ta.created_at }}</td>
+        <td class="admin-actions">
+          {% if ta.id == current_user_id %}
+            <span style="color:#999">（自分）</span>
+          {% elif is_system_admin %}
+            {# システム管理者は全てのテナント管理者を編集可能 #}
+            <a class="btn small" href="{{ url_for('tenant_admin.tenant_admin_edit', tadmin_id=ta.id) }}">編集</a>
+            
+            {% if ta.is_owner != 1 %}
+            <form method="post" action="{{ url_for('tenant_admin.toggle_tenant_admin_manage_permission', tadmin_id=ta.id) }}" style="display:inline">
+              {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
+              <button class="btn small" type="submit" style="background:{% if ta.can_manage_admins == 1 %}#999{% else %}#4caf50{% endif %}">
+                {% if ta.can_manage_admins == 1 %}権限剥奪{% else %}権限付与{% endif %}
+              </button>
+            </form>
+            
+            <form method="post" action="{{ url_for('tenant_admin.transfer_tenant_ownership', tadmin_id=ta.id) }}" style="display:inline" onsubmit="return confirm('本当にオーナー権限を移譲しますか？')">
+              {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
+              <button class="btn small" type="submit" style="background:#ff6f00">オーナー移譲</button>
+            </form>
+            
+            <form method="post" action="{{ url_for('tenant_admin.tenant_admin_delete', tadmin_id=ta.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？')">
+              {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
+              <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
+            </form>
+            {% endif %}
+          {% elif ta.is_owner != 1 %}
+            {# テナント管理者はオーナー以外を編集可能 #}
+            <a class="btn small" href="{{ url_for('tenant_admin.tenant_admin_edit', tadmin_id=ta.id) }}">編集</a>
+            
+            <form method="post" action="{{ url_for('tenant_admin.toggle_tenant_admin_manage_permission', tadmin_id=ta.id) }}" style="display:inline">
+              {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
+              <button class="btn small" type="submit" style="background:{% if ta.can_manage_admins == 1 %}#999{% else %}#4caf50{% endif %}">
+                {% if ta.can_manage_admins == 1 %}権限剥奪{% else %}権限付与{% endif %}
+              </button>
+            </form>
+            
+            <form method="post" action="{{ url_for('tenant_admin.transfer_tenant_ownership', tadmin_id=ta.id) }}" style="display:inline" onsubmit="return confirm('本当にオーナー権限を移譲しますか？')">
+              {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
+              <button class="btn small" type="submit" style="background:#ff6f00">オーナー移譲</button>
+            </form>
+            
+            <form method="post" action="{{ url_for('tenant_admin.tenant_admin_delete', tadmin_id=ta.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？')">
+              {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
+              <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
+            </form>
+          {% else %}
+            <span style="color:#999">オーナーは編集のみ可能</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p style="color:#666">テナント管理者が登録されていません。</p>
+{% endif %}
+
+{% endblock %}

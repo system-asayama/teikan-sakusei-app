@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}テナント情報{% endblock %}
+{% block content %}
+<style>
+  @media (max-width: 768px) {
+    .card {
+      padding: 0.75rem;
+      border: none;
+      border-radius: 0;
+    }
+    
+    .card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    
+    .info-section {
+      background: #fff;
+      border-radius: 8px;
+      padding: 0;
+    }
+    
+    .info-item {
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .info-item:last-child {
+      border-bottom: none;
+    }
+    
+    .info-label {
+      font-weight: 600;
+      color: #666;
+      font-size: 0.85em;
+      margin-bottom: 4px;
+    }
+    
+    .info-value {
+      color: #333;
+      font-size: 0.95em;
+      word-break: break-all;
+    }
+    
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      flex: 1;
+      text-align: center;
+      min-width: 100px;
+    }
+  }
+</style>
+
+<h1>テナント情報</h1>
+
+<div class="card">
+  <h2>{{ tenant['名称'] }}</h2>
+  
+  <div class="info-section" style="margin-top:20px">
+    <div class="info-item">
+      <div class="info-label">テナントID</div>
+      <div class="info-value">{{ tenant.id }}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">名称</div>
+      <div class="info-value">{{ tenant['名称'] }}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Slug</div>
+      <div class="info-value">{{ tenant.slug }}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">作成日時</div>
+      <div class="info-value">{{ tenant.created_at }}</div>
+    </div>
+  </div>
+
+  <div class="actions" style="margin-top:20px">
+    <a class="btn" href="{{ url_for('tenant_admin.me_edit') }}">編集</a>
+    <a class="btn sub" href="{{ url_for('tenant_admin.dashboard') }}">戻る</a>
+  </div>
+</div>
+{% endblock %}

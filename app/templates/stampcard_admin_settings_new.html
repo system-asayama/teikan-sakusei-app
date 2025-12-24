@@ -1,0 +1,563 @@
+{% extends "base.html" %}
+
+{% block title %}スタンプカード設定 - {{ store_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="header">
+    <h1>スタンプカード設定</h1>
+    <p class="store-name">{{ store_name }}</p>
+  </div>
+  
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  
+  <div class="settings-card">
+    <form method="POST" action="{{ url_for('stampcard_admin.settings', store_id=store_id) }}" id="settingsForm">
+      <!-- 基本設定 -->
+      <div class="section">
+        <h2>基本設定</h2>
+        
+        <div class="form-group">
+          <label for="card_title">カードタイトル</label>
+          <input type="text" id="card_title" name="card_title" 
+                 value="{{ settings.card_title }}" required>
+          <small>顧客に表示されるスタンプカードのタイトル</small>
+        </div>
+        
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" name="enabled" 
+                   {% if settings.enabled %}checked{% endif %}>
+            スタンプカード機能を有効にする
+          </label>
+          <small>無効にすると、顧客はスタンプカードを利用できなくなります</small>
+        </div>
+      </div>
+      
+      <!-- 特典設定モード -->
+      <div class="section">
+        <h2>特典設定</h2>
+        
+        <div class="mode-selector">
+          <label class="mode-option">
+            <input type="radio" name="use_multi_rewards" value="0" 
+                   {% if not settings.use_multi_rewards %}checked{% endif %}
+                   onchange="toggleRewardMode()">
+            <div class="mode-content">
+              <strong>シンプルモード</strong>
+              <p>1つの特典のみ設定（例: 10個で1回特典）</p>
+            </div>
+          </label>
+          
+          <label class="mode-option">
+            <input type="radio" name="use_multi_rewards" value="1" 
+                   {% if settings.use_multi_rewards %}checked{% endif %}
+                   onchange="toggleRewardMode()">
+            <div class="mode-content">
+              <strong>複数特典モード</strong>
+              <p>段階的な特典を設定（例: 5個、10個、20個で異なる特典）</p>
+            </div>
+          </label>
+        </div>
+      </div>
+      
+      <!-- シンプルモード設定 -->
+      <div id="simpleMode" class="section" style="display: {% if settings.use_multi_rewards %}none{% else %}block{% endif %};">
+        <div class="form-group">
+          <label for="required_stamps">必要スタンプ数</label>
+          <input type="number" id="required_stamps" name="required_stamps" 
+                 value="{{ settings.required_stamps }}" min="1" max="50">
+          <small>特典を獲得するために必要なスタンプの数</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="reward_description">特典内容</label>
+          <textarea id="reward_description" name="reward_description" 
+                    rows="3">{{ settings.reward_description }}</textarea>
+          <small>スタンプを集めた顧客が獲得できる特典の説明</small>
+        </div>
+      </div>
+      
+      <!-- 複数特典モード設定 -->
+      <div id="multiMode" class="section" style="display: {% if settings.use_multi_rewards %}block{% else %}none{% endif %};">
+        <div class="rewards-list" id="rewardsList">
+          {% if rewards %}
+            {% for reward in rewards %}
+            <div class="reward-item" data-reward-id="{{ reward.id }}">
+              <div class="reward-header">
+                <span class="reward-number">特典 {{ loop.index }}</span>
+                <button type="button" class="btn-remove" onclick="removeReward(this)">削除</button>
+              </div>
+              <div class="reward-fields">
+                <div class="form-group">
+                  <label>必要スタンプ数</label>
+                  <input type="number" name="rewards[{{ loop.index0 }}][required_stamps]" 
+                         value="{{ reward.required_stamps }}" min="1" max="100" required>
+                </div>
+                <div class="form-group">
+                  <label>特典内容</label>
+                  <input type="text" name="rewards[{{ loop.index0 }}][description]" 
+                         value="{{ reward.reward_description }}" required>
+                </div>
+                <div class="form-group checkbox-group">
+                  <label>
+                    <input type="checkbox" name="rewards[{{ loop.index0 }}][repeatable]" 
+                           {% if reward.is_repeatable %}checked{% endif %}>
+                    繰り返し利用可能
+                  </label>
+                  <small>チェックすると、達成後も繰り返し特典を利用できます</small>
+                </div>
+              </div>
+              <input type="hidden" name="rewards[{{ loop.index0 }}][id]" value="{{ reward.id }}">
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="reward-item">
+              <div class="reward-header">
+                <span class="reward-number">特典 1</span>
+                <button type="button" class="btn-remove" onclick="removeReward(this)">削除</button>
+              </div>
+              <div class="reward-fields">
+                <div class="form-group">
+                  <label>必要スタンプ数</label>
+                  <input type="number" name="rewards[0][required_stamps]" value="10" min="1" max="100" required>
+                </div>
+                <div class="form-group">
+                  <label>特典内容</label>
+                  <input type="text" name="rewards[0][description]" placeholder="例: ドリンク1杯無料" required>
+                </div>
+                <div class="form-group checkbox-group">
+                  <label>
+                    <input type="checkbox" name="rewards[0][repeatable]">
+                    繰り返し利用可能
+                  </label>
+                  <small>チェックすると、達成後も繰り返し特典を利用できます</small>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+        
+        <button type="button" class="btn btn-add" onclick="addReward()">+ 特典を追加</button>
+      </div>
+      
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">設定を保存</button>
+        <a href="{{ url_for('admin.store_apps', store_id=store_id) }}" class="btn btn-secondary">キャンセル</a>
+      </div>
+    </form>
+  </div>
+  
+  <div class="info-card">
+    <h3>💡 複数特典モードの使い方</h3>
+    <ul>
+      <li><strong>段階的な特典</strong>: 5個、10個、20個など、異なるスタンプ数で異なる特典を設定できます</li>
+      <li><strong>繰り返し特典</strong>: 「繰り返し利用可能」をチェックすると、達成後も何度でも利用できます</li>
+      <li><strong>組み合わせ</strong>: 初回のみの特典と繰り返し特典を組み合わせることもできます</li>
+    </ul>
+    <p><strong>例:</strong> 5個で100円割引（初回のみ）、10個ごとにドリンク無料（繰り返し）</p>
+  </div>
+  
+  <div class="back-link">
+    <a href="{{ url_for('admin.store_apps', store_id=store_id) }}">&larr; アプリ一覧に戻る</a>
+  </div>
+</div>
+
+<style>
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  
+  h1 {
+    color: #333;
+    margin-bottom: 8px;
+    font-size: 28px;
+  }
+  
+  h2 {
+    color: #333;
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+  
+  .store-name {
+    color: #666;
+    font-size: 18px;
+  }
+  
+  .alert {
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+  }
+  
+  .alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+  
+  .alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+  
+  .settings-card {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 24px;
+  }
+  
+  .section {
+    margin-bottom: 32px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .section:last-of-type {
+    border-bottom: none;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  
+  input[type="text"],
+  input[type="number"],
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+  
+  input:focus,
+  textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+  }
+  
+  textarea {
+    resize: vertical;
+  }
+  
+  small {
+    display: block;
+    margin-top: 4px;
+    color: #666;
+    font-size: 12px;
+  }
+  
+  .checkbox-group label {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+  }
+  
+  .checkbox-group input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+  }
+  
+  /* モード選択 */
+  .mode-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .mode-option {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: flex-start;
+  }
+  
+  .mode-option:hover {
+    border-color: #4CAF50;
+    background: #f9f9f9;
+  }
+  
+  .mode-option input[type="radio"] {
+    margin-right: 12px;
+    margin-top: 4px;
+  }
+  
+  .mode-option input[type="radio"]:checked + .mode-content {
+    color: #4CAF50;
+  }
+  
+  .mode-content strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 15px;
+  }
+  
+  .mode-content p {
+    margin: 0;
+    font-size: 13px;
+    color: #666;
+    font-weight: normal;
+  }
+  
+  /* 特典リスト */
+  .rewards-list {
+    margin-bottom: 16px;
+  }
+  
+  .reward-item {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .reward-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .reward-number {
+    font-weight: 600;
+    color: #333;
+    font-size: 15px;
+  }
+  
+  .btn-remove {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .btn-remove:hover {
+    background: #d32f2f;
+  }
+  
+  .reward-fields {
+    display: grid;
+    gap: 16px;
+  }
+  
+  .btn-add {
+    width: 100%;
+    padding: 12px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .btn-add:hover {
+    background: #1976d2;
+  }
+  
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+  }
+  
+  .btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-primary {
+    background: #4CAF50;
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    background: #45a049;
+  }
+  
+  .btn-secondary {
+    background: #e0e0e0;
+    color: #333;
+  }
+  
+  .btn-secondary:hover {
+    background: #d0d0d0;
+  }
+  
+  .info-card {
+    background: #e3f2fd;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  
+  .info-card h3 {
+    color: #1976d2;
+    margin-bottom: 16px;
+    font-size: 18px;
+  }
+  
+  .info-card ul {
+    margin: 0 0 16px 0;
+    padding-left: 24px;
+    color: #1976d2;
+  }
+  
+  .info-card li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+  
+  .info-card p {
+    margin: 0;
+    color: #1976d2;
+    font-weight: 500;
+  }
+  
+  .back-link {
+    text-align: center;
+  }
+  
+  .back-link a {
+    color: #2196F3;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .back-link a:hover {
+    text-decoration: underline;
+  }
+  
+  @media (max-width: 768px) {
+    .container {
+      padding: 16px;
+    }
+    
+    .settings-card {
+      padding: 20px;
+    }
+    
+    .mode-selector {
+      grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+      flex-direction: column;
+    }
+  }
+</style>
+
+<script>
+let rewardCount = {{ rewards|length if rewards else 1 }};
+
+function toggleRewardMode() {
+  const useMulti = document.querySelector('input[name="use_multi_rewards"]:checked').value === '1';
+  document.getElementById('simpleMode').style.display = useMulti ? 'none' : 'block';
+  document.getElementById('multiMode').style.display = useMulti ? 'block' : 'none';
+}
+
+function addReward() {
+  const rewardsList = document.getElementById('rewardsList');
+  const newReward = document.createElement('div');
+  newReward.className = 'reward-item';
+  newReward.innerHTML = `
+    <div class="reward-header">
+      <span class="reward-number">特典 ${rewardCount + 1}</span>
+      <button type="button" class="btn-remove" onclick="removeReward(this)">削除</button>
+    </div>
+    <div class="reward-fields">
+      <div class="form-group">
+        <label>必要スタンプ数</label>
+        <input type="number" name="rewards[${rewardCount}][required_stamps]" value="${(rewardCount + 1) * 5}" min="1" max="100" required>
+      </div>
+      <div class="form-group">
+        <label>特典内容</label>
+        <input type="text" name="rewards[${rewardCount}][description]" placeholder="例: ドリンク1杯無料" required>
+      </div>
+      <div class="form-group checkbox-group">
+        <label>
+          <input type="checkbox" name="rewards[${rewardCount}][repeatable]">
+          繰り返し利用可能
+        </label>
+        <small>チェックすると、達成後も繰り返し特典を利用できます</small>
+      </div>
+    </div>
+  `;
+  rewardsList.appendChild(newReward);
+  rewardCount++;
+  updateRewardNumbers();
+}
+
+function removeReward(button) {
+  const rewardItem = button.closest('.reward-item');
+  const rewardsList = document.getElementById('rewardsList');
+  
+  if (rewardsList.children.length > 1) {
+    rewardItem.remove();
+    updateRewardNumbers();
+  } else {
+    alert('最低1つの特典が必要です');
+  }
+}
+
+function updateRewardNumbers() {
+  const rewards = document.querySelectorAll('.reward-item');
+  rewards.forEach((reward, index) => {
+    reward.querySelector('.reward-number').textContent = `特典 ${index + 1}`;
+  });
+}
+
+// ページ読み込み時にモードを設定
+document.addEventListener('DOMContentLoaded', function() {
+  toggleRewardMode();
+});
+</script>
+{% endblock %}

@@ -1,135 +1,1163 @@
 # -*- coding: utf-8 -*-
 """
-管理者用Blueprint
+管理者ダッシュボード
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from app.utils.db import get_db, _sql
-from app.utils.decorators import require_roles, ROLES
-from app.utils.security import hash_password, verify_password
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from ..utils import require_roles, ROLES, get_db_connection
+from ..utils.db import _sql
+from werkzeug.security import generate_password_hash
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
-@bp.route('/mypage', methods=['GET', 'POST'])
-@require_roles(ROLES['SYSTEM_ADMIN'], ROLES['TENANT_ADMIN'], ROLES['ADMIN'])
-def mypage():
-    """管理者マイページ"""
-    conn = get_db()
+@bp.route('/')
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def dashboard():
+    """管理者ダッシュボード"""
+    # ロールに応じたマイページURLを設定
+    role = session.get('role')
+    if role == 'system_admin':
+        mypage_url = url_for('system_admin.mypage')
+    elif role == 'tenant_admin':
+        mypage_url = url_for('tenant_admin.mypage')
+    else:
+        mypage_url = url_for('admin.mypage')
+    return render_template('admin_dashboard.html', tenant_id=session.get('tenant_id'), mypage_url=mypage_url)
+
+
+@bp.route('/store_info')
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def store_info():
+    """店舗情報表示"""
+    tenant_id = session.get('tenant_id')
+    user_id = session.get('user_id')
+    conn = get_db_connection()
     cur = conn.cursor()
     
-    user_id = session.get('user_id')
+    # セッションにtenant_idがない場合、管理者情報から取得
+    if not tenant_id:
+        cur.execute(_sql(conn, 'SELECT tenant_id FROM "T_管理者" WHERE id = %s'), (user_id,))
+        admin_row = cur.fetchone()
+        
+        if not admin_row or not admin_row[0]:
+            flash('テナント情報が見つかりません', 'error')
+            conn.close()
+            return redirect(url_for('admin.dashboard'))
+        
+        tenant_id = admin_row[0]
+    
+    # テナント情報を取得
+    cur.execute(_sql(conn, 'SELECT id, 名称, slug, created_at FROM "T_テナント" WHERE id = %s'), (tenant_id,))
+    tenant_row = cur.fetchone()
+    
+    if not tenant_row:
+        flash('テナント情報が見つかりません', 'error')
+        conn.close()
+        return redirect(url_for('admin.dashboard'))
+    
+    tenant = {
+        'id': tenant_row[0],
+        '名称': tenant_row[1],
+        'slug': tenant_row[2],
+        'created_at': tenant_row[3]
+    }
+    
+    # 店舗一覧を取得
+    cur.execute(_sql(conn, 'SELECT id, 名称, slug, created_at FROM "T_店舗" WHERE tenant_id = %s ORDER BY id'), (tenant_id,))
+    stores = []
+    for row in cur.fetchall():
+        stores.append({
+            'id': row[0],
+            '名称': row[1],
+            'slug': row[2],
+            'created_at': row[3]
+        })
+    
+    conn.close()
+    
+    return render_template('admin_store_info.html', tenant=tenant, stores=stores)
+
+
+@bp.route('/store/<int:store_id>/edit', methods=['GET', 'POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def store_edit(store_id):
+    """店舗編集"""
+    tenant_id = session.get('tenant_id')
+    conn = get_db_connection()
+    cur = conn.cursor()
     
     if request.method == 'POST':
-        action = request.form.get('action')
+        name = request.form.get('名称', '').strip()
+        slug = request.form.get('slug', '').strip()
+        openai_api_key = request.form.get('openai_api_key', '').strip()
+        
+        if not name or not slug:
+            flash('名称とslugは必須です', 'error')
+        else:
+            # 重複チェック（自分以外）
+            cur.execute(_sql(conn, 'SELECT id FROM "T_店舗" WHERE tenant_id = %s AND slug = %s AND id != %s'), 
+                       (tenant_id, slug, store_id))
+            if cur.fetchone():
+                flash(f'slug "{slug}" は既に使用されています', 'error')
+            else:
+                cur.execute(_sql(conn, '''
+                    UPDATE "T_店舗"
+                    SET 名称 = %s, slug = %s, openai_api_key = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s AND tenant_id = %s
+                '''), (name, slug, openai_api_key if openai_api_key else None, store_id, tenant_id))
+                conn.commit()
+                flash('店舗情報を更新しました', 'success')
+                conn.close()
+                return redirect(url_for('admin.store_info'))
+    
+    # GETリクエスト：店舗情報を取得
+    cur.execute(_sql(conn, '''
+        SELECT id, 名称, slug, openai_api_key
+        FROM "T_店舗"
+        WHERE id = %s AND tenant_id = %s
+    '''), (store_id, tenant_id))
+    row = cur.fetchone()
+    conn.close()
+    
+    if not row:
+        flash('店舗が見つかりません', 'error')
+        return redirect(url_for('admin.store_info'))
+    
+    store = {'id': row[0], '名称': row[1], 'slug': row[2], 'openai_api_key': row[3] if len(row) > 3 else None}
+    return render_template('admin_store_edit.html', store=store, back_url=url_for('admin.store_info'))
+
+
+@bp.route('/store/<int:store_id>/delete', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def store_delete(store_id):
+    """店舗削除"""
+    tenant_id = session.get('tenant_id')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 店舗情報を取得
+    cur.execute(_sql(conn, 'SELECT 名称 FROM "T_店舗" WHERE id = %s AND tenant_id = %s'),
+               (store_id, tenant_id))
+    row = cur.fetchone()
+    
+    if not row:
+        flash('店舗が見つかりません', 'error')
+    else:
+        cur.execute(_sql(conn, 'DELETE FROM "T_店舗" WHERE id = %s'), (store_id,))
+        conn.commit()
+        flash(f'{row[0]} を削除しました', 'success')
+    
+    conn.close()
+    return redirect(url_for('admin.store_info'))
+
+
+@bp.route('/console')
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def console():
+    """管理者コンソール"""
+    tenant_id = session.get('tenant_id')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 従業員数を取得
+    cur.execute(_sql(conn, 'SELECT COUNT(*) FROM "T_従業員" WHERE tenant_id = %s'),
+               (tenant_id,))
+    employee_count = cur.fetchone()[0]
+    
+    conn.close()
+    
+    return render_template('admin_console.html', employee_count=employee_count)
+
+
+# ========================================
+# 管理者管理
+# ========================================
+
+@bp.route('/admins')
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def admins():
+    """管理者一覧"""
+    user_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 権限チェック（システム管理者とテナント管理者は無条件で許可）
+    role = session.get('role')
+    if role == 'system_admin' or role == 'tenant_admin':
+        is_owner = True
+    else:
+        # 店舗管理者の場合はオーナー権限チェック
+        cur.execute(_sql(conn, 'SELECT is_owner, can_manage_admins FROM "T_管理者" WHERE id = %s'), (user_id,))
+        row = cur.fetchone()
+        if not row or (row[0] != 1 and row[1] != 1):
+            flash('管理者を管理する権限がありません', 'error')
+            conn.close()
+            return redirect(url_for('admin.dashboard'))
+        
+        is_owner = row[0] == 1
+    
+    cur.execute(_sql(conn, '''
+        SELECT id, login_id, name, is_owner, can_manage_admins, active, created_at 
+        FROM "T_管理者" 
+        WHERE tenant_id = %s AND role = %s
+        ORDER BY is_owner DESC, can_manage_admins DESC, id
+    '''), (tenant_id, ROLES["ADMIN"]))
+    
+    admins_list = []
+    for row in cur.fetchall():
+        admins_list.append({
+            'id': row[0],
+            'login_id': row[1],
+            'name': row[2],
+            'is_owner': row[3],
+            'can_manage_admins': row[4],
+            'active': row[5],
+            'created_at': row[6]
+        })
+    conn.close()
+    
+    is_system_admin = role == 'system_admin'
+    is_tenant_admin = role == 'tenant_admin'
+    return render_template('admin_admins.html', admins=admins_list, is_owner=is_owner, current_user_id=user_id, is_system_admin=is_system_admin, is_tenant_admin=is_tenant_admin)
+
+
+@bp.route('/admins/new', methods=['GET', 'POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def admin_new():
+    """管理者新規作成"""
+    user_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    
+    # 権限チェック（システム管理者とテナント管理者は無条件で許可）
+    role = session.get('role')
+    if role == 'system_admin' or role == 'tenant_admin':
+        pass  # 無条件で許可
+    else:
+        # 店舗管理者の場合はオーナー権限チェック
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(_sql(conn, 'SELECT is_owner, can_manage_admins FROM "T_管理者" WHERE id = %s'), (user_id,))
+        row = cur.fetchone()
+        if not row or (row[0] != 1 and row[1] != 1):
+            flash('管理者を管理する権限がありません', 'error')
+            conn.close()
+            return redirect(url_for('admin.dashboard'))
+        conn.close()
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 店舗リストを取得
+    cur.execute(_sql(conn, 'SELECT id, 名称 FROM "T_店舗" WHERE tenant_id = %s AND 有効 = 1 ORDER BY id'), (tenant_id,))
+    stores = [dict(row) for row in cur.fetchall()]
+    conn.close()
+    
+    if request.method == 'POST':
+        login_id = request.form.get('login_id', '').strip()
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        password_confirm = request.form.get('password_confirm', '').strip()
+        store_ids = request.form.getlist('store_ids')  # 選択された店舗IDリスト
+        
+        if not login_id or not name or not password:
+            flash('全ての項目を入力してください', 'error')
+        elif password != password_confirm:
+            flash('パスワードが一致しません', 'error')
+        elif not store_ids:
+            flash('少なくとも1つの店舗を選択してください', 'error')
+        else:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            # 重複チェック
+            cur.execute(_sql(conn, 'SELECT id FROM "T_管理者" WHERE login_id = %s'), (login_id,))
+            if cur.fetchone():
+                flash('このログインIDは既に使用されています', 'error')
+                conn.close()
+            else:
+                ph = generate_password_hash(password)
+                cur.execute(_sql(conn, '''
+                    INSERT INTO "T_管理者" (login_id, name, email, password_hash, role, tenant_id, active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                '''), (login_id, name, email, ph, ROLES['ADMIN'], tenant_id, 1))
+                admin_id = cur.lastrowid
+                
+                # T_管理者_店舗に登録
+                for store_id in store_ids:
+                    cur.execute(_sql(conn, '''
+                        INSERT INTO "T_管理者_店舗" (admin_id, store_id)
+                        VALUES (%s, %s)
+                    '''), (admin_id, int(store_id)))
+                
+                conn.commit()
+                conn.close()
+                flash('管理者を作成しました', 'success')
+                return redirect(url_for('admin.admins'))
+    
+    return render_template('admin_admin_new.html', stores=stores, back_url=url_for('admin.admins'))
+
+
+@bp.route('/admins/<int:admin_id>/delete', methods=['POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def admin_delete(admin_id):
+    """管理者削除"""
+    tenant_id = session.get('tenant_id')
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 権限チェック（システム管理者とテナント管理者は無条件で許可）
+    role = session.get('role')
+    if role == 'system_admin' or role == 'tenant_admin':
+        pass  # 無条件で許可
+    else:
+        # 店舗管理者の場合はオーナー権限チェック
+        cur.execute(_sql(conn, 'SELECT is_owner, can_manage_admins FROM "T_管理者" WHERE id = %s'), (user_id,))
+        row = cur.fetchone()
+        if not row or (row[0] != 1 and row[1] != 1):
+            flash('管理者を管理する権限がありません', 'error')
+            conn.close()
+            return redirect(url_for('admin.dashboard'))
+    
+    # 自分自身の削除を防止
+    if admin_id == user_id:
+        flash('自分自身を削除することはできません', 'error')
+        conn.close()
+        return redirect(url_for('admin.admins'))
+    
+    # テナントIDとオーナーフラグの確認
+    cur.execute(_sql(conn, 'SELECT name, is_owner FROM "T_管理者" WHERE id = %s AND tenant_id = %s AND role = %s'),
+               (admin_id, tenant_id, ROLES["ADMIN"]))
+    row = cur.fetchone()
+    
+    if not row:
+        flash('管理者が見つかりません', 'error')
+    elif row[1] == 1:
+        flash('オーナーは削除できません。先にオーナー権限を移譲してください。', 'error')
+    else:
+        cur.execute(_sql(conn, 'DELETE FROM "T_管理者" WHERE id = %s'), (admin_id,))
+        conn.commit()
+        flash(f'{row[0]} を削除しました', 'success')
+    
+    conn.close()
+    return redirect(url_for('admin.admins'))
+
+
+@bp.route('/admins/<int:admin_id>/edit', methods=['GET', 'POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def admin_edit(admin_id):
+    """管理者編集"""
+    user_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 権限チェック（システム管理者とテナント管理者は無条件で許可）
+    role = session.get('role')
+    if role == 'system_admin' or role == 'tenant_admin':
+        pass  # 無条件で許可
+    else:
+        # 店舗管理者の場合はオーナー権限チェック
+        cur.execute(_sql(conn, 'SELECT is_owner, can_manage_admins FROM "T_管理者" WHERE id = %s'), (user_id,))
+        row = cur.fetchone()
+        if not row or (row[0] != 1 and row[1] != 1):
+            flash('管理者を編集する権限がありません', 'error')
+            conn.close()
+            return redirect(url_for('admin.dashboard'))
+    
+    # 店舗一覧を取得
+    cur.execute(_sql(conn, 'SELECT id, 名称 FROM "T_店舗" WHERE tenant_id = %s AND 有効 = 1 ORDER BY 名称'), (tenant_id,))
+    stores = [{'id': row[0], '名称': row[1]} for row in cur.fetchall()]
+    
+    if request.method == 'POST':
+        login_id = request.form.get('login_id', '').strip()
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        password_confirm = request.form.get('password_confirm', '').strip()
+        # is_ownerは編集画面では変更しない（一覧画面からオーナー移譲で変更）
+        # 現在の値を取得
+        cur.execute(_sql(conn, 'SELECT is_owner FROM "T_管理者" WHERE id = %s'), (admin_id,))
+        is_owner_row = cur.fetchone()
+        is_owner = is_owner_row[0] if is_owner_row else 0
+        
+        store_ids = request.form.getlist('store_ids')
+        active = int(request.form.get('active', 1))
+        
+        if not login_id or not name:
+            flash('ログインIDと氏名は必須です', 'error')
+        elif password and password != password_confirm:
+            flash('パスワードが一致しません', 'error')
+        elif not store_ids:
+            flash('少なくとも1つの店舗を選択してください', 'error')
+        elif is_owner == 1 and active == 0:
+            flash('オーナーを無効にすることはできません。先にオーナー権限を移譲してください。', 'error')
+        else:
+            # 重複チェック（自分以外）
+            cur.execute(_sql(conn, 'SELECT id FROM "T_管理者" WHERE login_id = %s AND id != %s'), (login_id, admin_id))
+            if cur.fetchone():
+                flash(f'ログインID "{login_id}" は既に使用されています', 'error')
+            else:
+                if password:
+                    # パスワード変更あり
+                    ph = generate_password_hash(password)
+                    cur.execute(_sql(conn, '''
+                        UPDATE "T_管理者"
+                        SET login_id = %s, name = %s, email = %s, password_hash = %s, is_owner = %s, active = %s, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s AND tenant_id = %s AND role = %s
+                    '''), (login_id, name, email, ph, is_owner, active, admin_id, tenant_id, ROLES["ADMIN"]))
+                else:
+                    # パスワード変更なし
+                    cur.execute(_sql(conn, '''
+                        UPDATE "T_管理者"
+                        SET login_id = %s, name = %s, email = %s, is_owner = %s, active = %s, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = %s AND tenant_id = %s AND role = %s
+                    '''), (login_id, name, email, is_owner, active, admin_id, tenant_id, ROLES["ADMIN"]))
+                
+                # 所属店舗を更新
+                cur.execute(_sql(conn, 'DELETE FROM "T_管理者_店舗" WHERE admin_id = %s'), (admin_id,))
+                for store_id in store_ids:
+                    cur.execute(_sql(conn, 'INSERT INTO "T_管理者_店舗" (admin_id, store_id) VALUES (%s, %s)'), (admin_id, int(store_id)))
+                
+                conn.commit()
+                flash('管理者情報を更新しました', 'success')
+                conn.close()
+                return redirect(url_for('admin.admins'))
+    
+    # GETリクエスト：管理者情報を取得
+    cur.execute(_sql(conn, '''
+        SELECT id, login_id, name, email, is_owner, active
+        FROM "T_管理者"
+        WHERE id = %s AND tenant_id = %s AND role = %s
+    '''), (admin_id, tenant_id, ROLES["ADMIN"]))
+    row = cur.fetchone()
+    
+    if not row:
+        conn.close()
+        flash('管理者が見つかりません', 'error')
+        return redirect(url_for('admin.admins'))
+    
+    admin = {
+        'id': row[0],
+        'login_id': row[1],
+        'name': row[2],
+        'email': row[3],
+        'is_owner': row[4],
+        'active': row[5] if row[5] is not None else 1
+    }
+    
+    # 現在の所属店舗を取得
+    cur.execute(_sql(conn, 'SELECT store_id FROM "T_管理者_店舗" WHERE admin_id = %s'), (admin_id,))
+    admin_store_ids = [row[0] for row in cur.fetchall()]
+    conn.close()
+    
+    return render_template('admin_admin_edit.html', admin=admin, stores=stores, admin_store_ids=admin_store_ids, back_url=url_for('admin.admins'))
+
+
+@bp.route('/admins/<int:admin_id>/transfer_owner', methods=['POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def admin_transfer_owner(admin_id):
+    """オーナー権限移譲"""
+    tenant_id = session.get('tenant_id')
+    user_id = session.get('user_id')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 権限チェック（システム管理者とテナント管理者は無条件で許可）
+    role = session.get('role')
+    if role == 'system_admin' or role == 'tenant_admin':
+        pass  # 無条件で許可
+    else:
+        # 店舗管理者の場合はオーナー権限チェック
+        cur.execute(_sql(conn, 'SELECT is_owner FROM "T_管理者" WHERE id = %s'), (user_id,))
+        row = cur.fetchone()
+        if not row or row[0] != 1:
+            flash('オーナー権限を移譲する権限がありません', 'error')
+            conn.close()
+            return redirect(url_for('admin.admins'))
+    
+    # 自分自身への移譲を防止
+    if admin_id == user_id:
+        flash('自分自身にオーナー権限を移譲することはできません', 'error')
+        conn.close()
+        return redirect(url_for('admin.admins'))
+    
+    # 移譲先の管理者が同じテナントか確認
+    cur.execute(_sql(conn, 'SELECT name FROM "T_管理者" WHERE id = %s AND tenant_id = %s AND role = %s'),
+               (admin_id, tenant_id, ROLES["ADMIN"]))
+    row = cur.fetchone()
+    
+    if not row:
+        flash('管理者が見つかりません', 'error')
+    else:
+        # 現在のオーナーの権限を解除（同じテナント・同じロールの全オーナーを解除）
+        cur.execute(_sql(conn, 'UPDATE "T_管理者" SET is_owner = 0, can_manage_admins = 0 WHERE tenant_id = %s AND role = %s AND is_owner = 1'), (tenant_id, ROLES["ADMIN"]))
+        # 新しいオーナーに権限を付与
+        cur.execute(_sql(conn, 'UPDATE "T_管理者" SET is_owner = 1, can_manage_admins = 1 WHERE id = %s'), (admin_id,))
+        conn.commit()
+        flash(f'{row[0]} にオーナー権限を移譲しました', 'success')
+    
+    conn.close()
+    return redirect(url_for('admin.admins'))
+
+
+@bp.route('/admins/<int:admin_id>/toggle_manage_permission', methods=['POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def toggle_admin_manage_permission(admin_id):
+    """管理者管理権限の付与・剥奪"""
+    tenant_id = session.get('tenant_id')
+    user_id = session.get('user_id')
+    role = session.get('role')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 権限チェック（システム管理者とテナント管理者は無条件で許可）
+    if role != 'system_admin' and role != 'tenant_admin':
+        # 店舗管理者の場合はオーナー権限チェック
+        cur.execute(_sql(conn, 'SELECT is_owner FROM "T_管理者" WHERE id = %s'), (user_id,))
+        row = cur.fetchone()
+        if not row or row[0] != 1:
+            flash('管理者管理権限を変更する権限がありません', 'error')
+            conn.close()
+            return redirect(url_for('admin.admins'))
+    
+    # 自分自身の権限は変更できない
+    if admin_id == user_id:
+        flash('自分自身の権限は変更できません', 'error')
+        conn.close()
+        return redirect(url_for('admin.admins'))
+    
+    # 現在の状態を取得
+    cur.execute(_sql(conn, '''
+        SELECT can_manage_admins, name, is_owner
+        FROM "T_管理者" 
+        WHERE id = %s AND tenant_id = %s AND role = %s
+    '''), (admin_id, tenant_id, ROLES["ADMIN"]))
+    row = cur.fetchone()
+    
+    if not row:
+        flash('管理者が見つかりません', 'error')
+        conn.close()
+        return redirect(url_for('admin.admins'))
+    
+    # オーナーの権限は変更できない
+    if row[2] == 1:
+        flash('オーナーの権限は変更できません', 'error')
+        conn.close()
+        return redirect(url_for('admin.admins'))
+    
+    current_permission = row[0]
+    admin_name = row[1]
+    new_permission = 0 if current_permission == 1 else 1
+    
+    # 権限を切り替え
+    cur.execute(_sql(conn, '''
+        UPDATE "T_管理者"
+        SET can_manage_admins = %s
+        WHERE id = %s
+    '''), (new_permission, admin_id))
+    conn.commit()
+    conn.close()
+    
+    if new_permission == 1:
+        flash(f'{admin_name} に管理者管理権限を付与しました', 'success')
+    else:
+        flash(f'{admin_name} から管理者管理権限を剥奪しました', 'success')
+    
+    return redirect(url_for('admin.admins'))
+
+
+# ========================================
+# 従業員管理
+# ========================================
+
+@bp.route('/employees')
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def employees():
+    """従業員一覧（自分が所属する店舗のみ）"""
+    admin_id = session.get('user_id')
+    store_id = session.get('store_id')
+    
+    if not store_id:
+        flash('店舗が選択されていません', 'error')
+        return redirect(url_for('admin.dashboard'))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 選択中の店舗に所属する従業員を取得
+    cur.execute(_sql(conn, '''
+        SELECT DISTINCT e.id, e.login_id, e.name, e.email, e.created_at, COALESCE(e.active, 1)
+        FROM "T_従業員" e
+        INNER JOIN "T_従業員_店舗" es ON e.id = es.employee_id
+        WHERE es.store_id = %s
+        ORDER BY e.created_at DESC
+    '''), (store_id,))
+    
+    employees_list = []
+    for row in cur.fetchall():
+        emp_id = row[0]
+        
+        # この従業員が所属する店舗を取得
+        cur.execute(_sql(conn, '''
+            SELECT s.名称
+            FROM "T_店舗" s
+            INNER JOIN "T_従業員_店舗" es ON s.id = es.store_id
+            WHERE es.employee_id = %s
+            ORDER BY s.名称
+        '''), (emp_id,))
+        stores = [r[0] for r in cur.fetchall()]
+        
+        employees_list.append({
+            'id': emp_id,
+            'login_id': row[1],
+            'name': row[2],
+            'email': row[3],
+            'created_at': row[4],
+            'active': row[5] if row[5] is not None else 1,
+            'stores': stores
+        })
+    
+    # 現在の店舗名を取得
+    cur.execute(_sql(conn, 'SELECT 名称 FROM "T_店舗" WHERE id = %s'), (store_id,))
+    store_row = cur.fetchone()
+    store_name = store_row[0] if store_row else '不明'
+    
+    conn.close()
+    
+    return render_template('admin_employees.html', employees=employees_list, store_name=store_name)
+
+
+@bp.route('/employees/new', methods=['GET', 'POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def employee_new():
+    """従業員新規作成（自分が所属する店舗のみ選択可能）"""
+    admin_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    store_id = session.get('store_id')
+    
+    if not store_id:
+        flash('店舗が選択されていません', 'error')
+        return redirect(url_for('admin.dashboard'))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 管理者が所属する店舗一覧を取得
+    cur.execute(_sql(conn, '''
+        SELECT s.id, s.名称
+        FROM "T_店舗" s
+        INNER JOIN "T_管理者_店舗" admin_store ON s.id = admin_store.store_id
+        WHERE admin_store.admin_id = %s AND s.有効 = 1
+        ORDER BY s.名称
+    '''), (admin_id,))
+    stores = [{'id': row[0], '名称': row[1]} for row in cur.fetchall()]
+    
+    if request.method == 'POST':
+        login_id = request.form.get('login_id', '').strip()
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        password_confirm = request.form.get('password_confirm', '').strip()
+        store_ids = request.form.getlist('store_ids')  # 複数選択
+        
+        if not login_id or not name or not email or not password:
+            flash('ログインID、氏名、メールアドレス、パスワードは必須です', 'error')
+        elif password != password_confirm:
+            flash('パスワードが一致しません', 'error')
+        elif not store_ids:
+            flash('少なくとも1つの店舗を選択してください', 'error')
+        else:
+            # 選択された店舗が全て管理者の所属店舗か確認
+            cur.execute(_sql(conn, '''
+                SELECT store_id FROM "T_管理者_店舗" WHERE admin_id = %s
+            '''), (admin_id,))
+            admin_store_ids = [str(row[0]) for row in cur.fetchall()]
+            
+            if not all(sid in admin_store_ids for sid in store_ids):
+                flash('選択された店舗に権限がありません', 'error')
+            else:
+                # 重複チェック
+                cur.execute(_sql(conn, 'SELECT id FROM "T_従業員" WHERE login_id = %s OR email = %s'), (login_id, email))
+                if cur.fetchone():
+                    flash('このログインIDまたはメールアドレスは既に使用されています', 'error')
+                else:
+                    ph = generate_password_hash(password)
+                    cur.execute(_sql(conn, '''
+                        INSERT INTO "T_従業員" (login_id, name, email, password_hash, tenant_id, role)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    '''), (login_id, name, email, ph, tenant_id, ROLES['EMPLOYEE']))
+                    
+                    # 新しく作成した従業員のIDを取得
+                    cur.execute(_sql(conn, 'SELECT id FROM "T_従業員" WHERE login_id = %s'), (login_id,))
+                    new_employee_id = cur.fetchone()[0]
+                    
+                    # 中間テーブルに店舗を紐付け
+                    for sid in store_ids:
+                        cur.execute(_sql(conn, '''
+                            INSERT INTO "T_従業員_店舗" (employee_id, store_id)
+                            VALUES (%s, %s)
+                        '''), (new_employee_id, int(sid)))
+                    
+                    conn.commit()
+                    flash('従業員を作成しました', 'success')
+                    conn.close()
+                    return redirect(url_for('admin.employees'))
+    
+    conn.close()
+    return render_template('admin_employee_new.html', stores=stores, back_url=url_for('admin.employees'))
+
+
+@bp.route('/employees/<int:employee_id>/edit', methods=['GET', 'POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def employee_edit(employee_id):
+    """従業員編集"""
+    admin_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    store_id = session.get('store_id')
+    role = session.get('role')
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # システム管理者・テナント管理者の場合はテナント内の全店舗を表示
+    if role in ['system_admin', 'tenant_admin']:
+        cur.execute(_sql(conn, '''
+            SELECT id, 名称
+            FROM "T_店舗"
+            WHERE tenant_id = %s AND 有効 = 1
+            ORDER BY 名称
+        '''), (tenant_id,))
+    else:
+        # 店舗管理者の場合は自分が所属する店舗のみ
+        if not store_id:
+            flash('店舗が選択されていません', 'error')
+            conn.close()
+            return redirect(url_for('admin.dashboard'))
+        cur.execute(_sql(conn, '''
+            SELECT s.id, s.名称
+            FROM "T_店舗" s
+            INNER JOIN "T_管理者_店舗" admin_store ON s.id = admin_store.store_id
+            WHERE admin_store.admin_id = %s AND s.有効 = 1
+            ORDER BY s.名称
+        '''), (admin_id,))
+    stores = [{'id': row[0], '名称': row[1]} for row in cur.fetchall()]
+    
+    if request.method == 'POST':
+        login_id = request.form.get('login_id', '').strip()
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        password_confirm = request.form.get('password_confirm', '').strip()
+        store_ids = request.form.getlist('store_ids')
+        active = int(request.form.get('active', 1))
+        
+        if not login_id or not name or not email:
+            flash('ログインID、氏名、メールアドレスは必須です', 'error')
+        elif password and password != password_confirm:
+            flash('パスワードが一致しません', 'error')
+        elif not store_ids:
+            flash('少なくとも1つの店舗を選択してください', 'error')
+        else:
+            # システム管理者・テナント管理者以外は店舗権限チェック
+            has_permission = True
+            if role not in ['system_admin', 'tenant_admin']:
+                cur.execute(_sql(conn, '''
+                    SELECT store_id FROM "T_管理者_店舗" WHERE admin_id = %s
+                '''), (admin_id,))
+                admin_store_ids = [str(row[0]) for row in cur.fetchall()]
+                if not all(sid in admin_store_ids for sid in store_ids):
+                    flash('選択された店舗に権限がありません', 'error')
+                    has_permission = False
+            
+            if has_permission:
+                # 重複チェック（自分以外）
+                cur.execute(_sql(conn, 'SELECT id FROM "T_従業員" WHERE (login_id = %s OR email = %s) AND id != %s'),
+                           (login_id, email, employee_id))
+                if cur.fetchone():
+                    flash('このログインIDまたはメールアドレスは既に使用されています', 'error')
+                else:
+                    # 従業員情報を更新
+                    if password:
+                        ph = generate_password_hash(password)
+                        cur.execute(_sql(conn, '''
+                            UPDATE "T_従業員"
+                            SET login_id = %s, name = %s, email = %s, password_hash = %s, active = %s, updated_at = CURRENT_TIMESTAMP
+                            WHERE id = %s AND tenant_id = %s
+                        '''), (login_id, name, email, ph, active, employee_id, tenant_id))
+                    else:
+                        cur.execute(_sql(conn, '''
+                            UPDATE "T_従業員"
+                            SET login_id = %s, name = %s, email = %s, active = %s, updated_at = CURRENT_TIMESTAMP
+                            WHERE id = %s AND tenant_id = %s
+                        '''), (login_id, name, email, active, employee_id, tenant_id))
+                    
+                    # 店舗の紐付けを更新
+                    cur.execute(_sql(conn, 'DELETE FROM "T_従業員_店舗" WHERE employee_id = %s'), (employee_id,))
+                    for sid in store_ids:
+                        cur.execute(_sql(conn, '''
+                            INSERT INTO "T_従業員_店舗" (employee_id, store_id)
+                            VALUES (%s, %s)
+                        '''), (employee_id, int(sid)))
+                    
+                    conn.commit()
+                    flash('従業員情報を更新しました', 'success')
+                    conn.close()
+                    return redirect(url_for('admin.employees'))
+    
+    # 従業員情報を取得
+    cur.execute(_sql(conn, '''
+        SELECT login_id, name, email, COALESCE(active, 1) FROM "T_従業員" WHERE id = %s AND tenant_id = %s
+    '''), (employee_id, tenant_id))
+    row = cur.fetchone()
+    
+    if not row:
+        flash('従業員が見つかりません', 'error')
+        conn.close()
+        return redirect(url_for('admin.employees'))
+    
+    employee = {
+        'id': employee_id,
+        'login_id': row[0],
+        'name': row[1],
+        'email': row[2],
+        'active': row[3] if row[3] is not None else 1
+    }
+    
+    # 現在の店舗割り当てを取得
+    cur.execute(_sql(conn, 'SELECT store_id FROM "T_従業員_店舗" WHERE employee_id = %s'), (employee_id,))
+    assigned_store_ids = [row[0] for row in cur.fetchall()]
+    
+    conn.close()
+    
+    return render_template('admin_employee_edit.html',
+                          employee=employee,
+                          stores=stores,
+                          assigned_store_ids=assigned_store_ids,
+                          back_url=url_for('admin.employees'))
+
+
+@bp.route('/employees/<int:employee_id>/delete', methods=['POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def employee_delete(employee_id):
+    """従業員削除（自分が所属する店舗の従業員のみ）"""
+    admin_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    store_id = session.get('store_id')
+    
+    if not store_id:
+        flash('店舗が選択されていません', 'error')
+        return redirect(url_for('admin.dashboard'))
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 従業員が現在の店舗に所属しているか確認
+    cur.execute(_sql(conn, '''
+        SELECT e.name
+        FROM "T_従業員" e
+        INNER JOIN "T_従業員_店舗" es ON e.id = es.employee_id
+        WHERE e.id = %s AND e.tenant_id = %s AND es.store_id = %s
+    '''), (employee_id, tenant_id, store_id))
+    row = cur.fetchone()
+    
+    if not row:
+        flash('従業員が見つかりません、または削除権限がありません', 'error')
+    else:
+        name = row[0]
+        # 中間テーブルのデータも削除
+        cur.execute(_sql(conn, 'DELETE FROM "T_従業員_店舗" WHERE employee_id = %s'), (employee_id,))
+        cur.execute(_sql(conn, 'DELETE FROM "T_従業員" WHERE id = %s AND tenant_id = %s'), (employee_id, tenant_id))
+        conn.commit()
+        flash(f'従業員 "{name}" を削除しました', 'success')
+    
+    conn.close()
+    return redirect(url_for('admin.employees'))
+
+
+# ========================================
+# 管理者マイページ
+# ========================================
+
+@bp.route('/mypage', methods=['GET', 'POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def mypage():
+    """管理者マイページ"""
+    user_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # ユーザー情報を取得
+    cur.execute(_sql(conn, '''
+        SELECT id, login_id, name, email, can_manage_admins, created_at, updated_at
+        FROM "T_管理者"
+        WHERE id = %s AND role = %s
+    '''), (user_id, ROLES["ADMIN"]))
+    
+    row = cur.fetchone()
+    
+    if not row:
+        flash('ユーザー情報が見つかりません', 'error')
+        conn.close()
+        return redirect(url_for('admin.dashboard'))
+    
+    user = {
+        'id': row[0],
+        'login_id': row[1],
+        'name': row[2],
+        'email': row[3],
+        'can_manage_admins': row[4],
+        'created_at': row[5],
+        'updated_at': row[6]
+    }
+    
+    # テナント名を取得
+    cur.execute(_sql(conn, 'SELECT 名称 FROM "T_テナント" WHERE id = %s'), (tenant_id,))
+    tenant_row = cur.fetchone()
+    tenant_name = tenant_row[0] if tenant_row else '不明'
+    
+    # 所属店舗を取得（表示用）
+    cur.execute(_sql(conn, '''
+        SELECT s.名称
+        FROM "T_店舗" s
+        INNER JOIN "T_管理者_店舗" admin_store ON s.id = admin_store.store_id
+        WHERE admin_store.admin_id = %s
+    '''), (user_id,))
+    stores = [row[0] for row in cur.fetchall()]
+    
+    # 所属店舗を取得（選択用）
+    cur.execute(_sql(conn, '''
+        SELECT s.id, s.名称
+        FROM "T_店舗" s
+        INNER JOIN "T_管理者_店舗" admin_store ON s.id = admin_store.store_id
+        WHERE admin_store.admin_id = %s
+    '''), (user_id,))
+    store_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+    
+    # POSTリクエスト（プロフィール編集またはパスワード変更）
+    if request.method == 'POST':
+        action = request.form.get('action', '')
         
         if action == 'update_profile':
-            # プロフィール更新
+            # プロフィール編集
             login_id = request.form.get('login_id', '').strip()
             name = request.form.get('name', '').strip()
             email = request.form.get('email', '').strip()
             
             if not login_id or not name:
+                conn.close()
                 flash('ログインIDと氏名は必須です', 'error')
-                return redirect(url_for('admin.mypage'))
+                return render_template('admin_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
             
-            # ログインID重複チェック
-            cur.execute(_sql(conn, '''
-                SELECT id FROM "T_管理者"
-                WHERE login_id = %s AND id != %s
-            '''), (login_id, user_id))
+            # ログインID重複チェック（自分以外）
+            cur.execute(_sql(conn, 'SELECT id FROM "T_管理者" WHERE login_id = %s AND id != %s'), (login_id, user_id))
             if cur.fetchone():
+                conn.close()
                 flash('このログインIDは既に使用されています', 'error')
-                return redirect(url_for('admin.mypage'))
+                return render_template('admin_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
             
-            # 更新
+            # プロフィール更新
             cur.execute(_sql(conn, '''
                 UPDATE "T_管理者"
                 SET login_id = %s, name = %s, email = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
             '''), (login_id, name, email, user_id))
-            if not conn.__class__.__module__.startswith("psycopg2"):
-                conn.commit()
+            conn.commit()
+            conn.close()
             
-            # セッション更新
-            session['login_id'] = login_id
-            session['user_name'] = name
-            
-            flash('プロフィールを更新しました', 'success')
+            flash('プロフィール情報を更新しました', 'success')
             return redirect(url_for('admin.mypage'))
         
         elif action == 'change_password':
             # パスワード変更
-            current_password = request.form.get('current_password', '')
-            new_password = request.form.get('new_password', '')
-            confirm_password = request.form.get('confirm_password', '')
+            current_password = request.form.get('current_password', '').strip()
+            new_password = request.form.get('new_password', '').strip()
+            new_password_confirm = request.form.get('new_password_confirm', '').strip()
             
-            if not current_password or not new_password or not confirm_password:
-                flash('すべてのパスワードフィールドを入力してください', 'error')
-                return redirect(url_for('admin.mypage'))
+            # パスワード一致チェック
+            if new_password != new_password_confirm:
+                flash('パスワードが一致しません', 'error')
+                conn.close()
+                return render_template('admin_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
             
-            # 現在のパスワード確認
-            cur.execute(_sql(conn, '''
-                SELECT password_hash FROM "T_管理者" WHERE id = %s
-            '''), (user_id,))
+            # 現在のパスワードを確認
+            cur.execute(_sql(conn, 'SELECT password_hash FROM "T_管理者" WHERE id = %s'), (user_id,))
             row = cur.fetchone()
-            if not row:
-                flash('ユーザーが見つかりません', 'error')
-                return redirect(url_for('admin.mypage'))
-            
-            if not verify_password(current_password, row[0]):
+            if not row or not check_password_hash(row[0], current_password):
+                conn.close()
                 flash('現在のパスワードが正しくありません', 'error')
-                return redirect(url_for('admin.mypage'))
+                return render_template('admin_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
             
-            # 新しいパスワードの確認
-            if new_password != confirm_password:
-                flash('新しいパスワードと確認用パスワードが一致しません', 'error')
-                return redirect(url_for('admin.mypage'))
-            
-            if len(new_password) < 8:
-                flash('パスワードは8文字以上にしてください', 'error')
-                return redirect(url_for('admin.mypage'))
-            
-            # パスワード更新
-            new_hash = hash_password(new_password)
+            # パスワードを更新
+            password_hash = generate_password_hash(new_password)
             cur.execute(_sql(conn, '''
                 UPDATE "T_管理者"
                 SET password_hash = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
-            '''), (new_hash, user_id))
-            if not conn.__class__.__module__.startswith("psycopg2"):
-                conn.commit()
+            '''), (password_hash, user_id))
+            conn.commit()
+            conn.close()
             
             flash('パスワードを変更しました', 'success')
             return redirect(url_for('admin.mypage'))
     
-    # ユーザー情報取得
+    conn.close()
+    return render_template('admin_mypage.html', user=user, tenant_name=tenant_name, stores=stores, store_list=store_list)
+
+
+@bp.route('/select_store_from_mypage', methods=['POST'])
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def select_store_from_mypage():
+    """マイページから店舗を選択してダッシュボードに進む"""
+    user_id = session.get('user_id')
+    tenant_id = session.get('tenant_id')
+    store_id = request.form.get('store_id')
+    
+    if not store_id:
+        flash('店舗を選択してください', 'error')
+        return redirect(url_for('admin.mypage'))
+    
+    # 管理者が選択した店舗に所属しているか確認
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
     cur.execute(_sql(conn, '''
-        SELECT id, login_id, name, email, role, tenant_id, active, is_owner, can_manage_admins, created_at, updated_at
-        FROM "T_管理者"
+        SELECT COUNT(*) FROM "T_管理者_店舗"
+        WHERE admin_id = %s AND store_id = %s
+    '''), (user_id, store_id))
+    
+    count = cur.fetchone()[0]
+    conn.close()
+    
+    if count == 0:
+        flash('選択した店舗にアクセスする権限がありません', 'error')
+        return redirect(url_for('admin.mypage'))
+    
+    # セッションに店舗IDを保存
+    session['store_id'] = int(store_id)
+    
+    flash('店舗を選択しました', 'success')
+    return redirect(url_for('admin.dashboard'))
+
+
+# ===== 店舗アプリ一覧 =====
+@bp.route('/store/<int:store_id>/apps')
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def store_apps(store_id):
+    """店舗アプリ一覧ページ"""
+    tenant_id = session.get('tenant_id')
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 店舗情報を取得
+    cur.execute(_sql(conn, '''
+        SELECT id, 名称, slug
+        FROM "T_店舗"
         WHERE id = %s
-    '''), (user_id,))
-    user = cur.fetchone()
+    '''), (store_id,))
     
-    if not user:
-        flash('ユーザー情報が見つかりません', 'error')
-        return redirect(url_for('auth.logout'))
+    store_row = cur.fetchone()
+    conn.close()
     
-    # テナント情報取得
-    tenant = None
-    if user[5]:  # tenant_id
-        cur.execute(_sql(conn, '''
-            SELECT id, 名称, slug FROM "T_テナント" WHERE id = %s
-        '''), (user[5],))
-        tenant = cur.fetchone()
+    if not store_row:
+        flash('店舗が見つかりません', 'error')
+        return redirect(url_for('admin.store_info'))
     
-    return render_template('admin_mypage.html',
-                         user=user,
-                         tenant=tenant)
+    store = {
+        'id': store_row[0],
+        'store_name': store_row[1],
+        'slug': store_row[2]
+    }
+    
+    # セッションにstore_idを設定（survey_adminで使用）
+    session['store_id'] = store_id
+    session['store_name'] = store_row[1]
+    
+    return render_template('admin_store_apps.html', store=store)
 
 
-@bp.route('/dashboard')
-@require_roles(ROLES['SYSTEM_ADMIN'], ROLES['TENANT_ADMIN'], ROLES['ADMIN'])
-def dashboard():
-    """管理者ダッシュボード"""
-    return render_template('admin_dashboard.html')
+# ===== アンケート結果表示 =====
+@bp.route('/store/<int:store_id>/survey/results')
+@require_roles(ROLES["ADMIN"], ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def survey_results(store_id):
+    """アンケート結果表示ページ"""
+    tenant_id = session.get('tenant_id')
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # 店舗情報を取得
+    cur.execute(_sql(conn, '''
+        SELECT id, 名称, slug
+        FROM "T_店舗"
+        WHERE id = %s
+    '''), (store_id,))
+    
+    store_row = cur.fetchone()
+    
+    if not store_row:
+        flash('店舗が見つかりません', 'error')
+        conn.close()
+        return redirect(url_for('admin.store_info'))
+    
+    store = {
+        'id': store_row[0],
+        'store_name': store_row[1],
+        'slug': store_row[2]
+    }
+    
+    # アンケート回答を取得（最新順）
+    cur.execute(_sql(conn, '''
+        SELECT 
+            id,
+            rating,
+            visit_purpose,
+            atmosphere,
+            recommend,
+            comment,
+            generated_review,
+            response_json,
+            created_at
+        FROM "T_アンケート回答"
+        WHERE store_id = %s
+        ORDER BY created_at DESC
+    '''), (store_id,))
+    
+    responses = []
+    for row in cur.fetchall():
+        import json
+        response_json = json.loads(row[7]) if row[7] else {}
+        responses.append({
+            'id': row[0],
+            'rating': row[1],
+            'visit_purpose': row[2],
+            'atmosphere': json.loads(row[3]) if row[3] else [],
+            'recommend': row[4],
+            'comment': row[5],
+            'generated_review': row[6],
+            'response_json': response_json,
+            'created_at': row[8]
+        })
+    
+    # 統計情報を計算
+    total_responses = len(responses)
+    avg_rating = sum(r['rating'] for r in responses) / total_responses if total_responses > 0 else 0
+    
+    # 評価分布
+    rating_distribution = {}
+    for i in range(1, 6):
+        rating_distribution[i] = sum(1 for r in responses if r['rating'] == i)
+    
+    conn.close()
+    
+    return render_template('admin_survey_results.html', 
+                         store=store,
+                         responses=responses,
+                         total_responses=total_responses,
+                         avg_rating=round(avg_rating, 2),
+                         rating_distribution=rating_distribution)

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}従業員一覧{% endblock %}
+{% block content %}
+<style>
+  .employee-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+  .employee-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+  
+  .employee-table thead tr {
+    background: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+  }
+  
+  .employee-table th {
+    padding: 8px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  
+  .employee-table tbody tr {
+    border-bottom: 1px solid #eee;
+  }
+  
+  .employee-table td {
+    padding: 8px;
+    white-space: nowrap;
+  }
+  
+  .employee-table .btn.small {
+    font-size: 0.9em;
+    padding: 4px 8px;
+  }
+  
+  /* スマホ用カード型レイアウト */
+  @media (max-width: 768px) {
+    .employee-table-wrapper {
+      overflow-x: visible;
+    }
+    
+    .employee-table thead {
+      display: none;
+    }
+    
+    .employee-table tbody {
+      display: block;
+    }
+    
+    .employee-table tbody tr {
+      display: block;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    
+    .employee-table td {
+      display: block;
+      padding: 8px 0;
+      white-space: normal;
+      border: none;
+    }
+    
+    .employee-table td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      display: inline-block;
+      width: 100px;
+      color: #374151;
+    }
+    
+    .employee-table td.employee-actions {
+      padding-top: 12px;
+      margin-top: 8px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .employee-table td.employee-actions::before {
+      display: none;
+    }
+    
+    .employee-table .btn.small {
+      display: inline-block;
+      margin: 4px 4px 4px 0;
+      font-size: 0.9em;
+      padding: 8px 12px;
+    }
+    
+    .employee-table td.employee-actions form {
+      display: inline-block;
+    }
+  }
+</style>
+
+<h1>従業員一覧</h1>
+
+<div style="margin-bottom:20px">
+  <a class="btn" href="{{ url_for('tenant_admin.employee_new') }}">新規作成</a>
+  <a class="btn sub" href="{{ url_for('tenant_admin.dashboard') }}">戻る</a>
+</div>
+
+{% if employees %}
+<div class="employee-table-wrapper">
+  <table class="employee-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>ログインID</th>
+        <th>氏名</th>
+        <th>有効</th>
+        <th>作成日時</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in employees %}
+      <tr>
+        <td data-label="ID: ">{{ e.id }}</td>
+        <td data-label="ログインID: "><code>{{ e.login_id }}</code></td>
+        <td data-label="氏名: "><strong>{{ e.name }}</strong></td>
+        <td data-label="有効: ">
+          {% if e.active == 1 %}
+            <span style="color:green">✓ 有効</span>
+          {% else %}
+            <span style="color:#999">無効</span>
+          {% endif %}
+        </td>
+        <td data-label="作成日時: " style="color:#666">{{ e.created_at }}</td>
+        <td class="employee-actions">
+          <a class="btn small" href="{{ url_for('tenant_admin.employee_edit', employee_id=e.id) }}">編集</a>
+          <form method="post" action="{{ url_for('tenant_admin.employee_delete', employee_id=e.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？')">
+            <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p style="color:#666">従業員が登録されていません。</p>
+{% endif %}
+
+{% endblock %}
