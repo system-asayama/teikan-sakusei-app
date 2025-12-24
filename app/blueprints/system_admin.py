@@ -920,19 +920,8 @@ def mypage():
     cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
     tenant_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
     
-    # 店舗リストを取得
-    cur.execute(_sql(conn, 'SELECT id, "名称", tenant_id FROM "T_店舗" WHERE "有効" = 1 ORDER BY tenant_id, id'))
-    store_list = [{'id': row[0], 'name': row[1], 'tenant_id': row[2]} for row in cur.fetchall()]
-    
-    # テナント名を店舗リストに追加
-    for store in store_list:
-        cur.execute(_sql(conn, 'SELECT "名称" FROM "T_テナント" WHERE id = %s'), (store['tenant_id'],))
-        tenant_row = cur.fetchone()
-        if tenant_row:
-            store['tenant_name'] = tenant_row[0]
-    
     conn.close()
-    return render_template('sys_mypage.html', user=user, tenant_list=tenant_list, store_list=store_list)
+    return render_template('sys_mypage.html', user=user, tenant_list=tenant_list)
 
 
 @bp.route('/select_tenant_from_mypage', methods=['POST'])
@@ -966,40 +955,4 @@ def select_tenant_from_mypage():
     return redirect('/tenant_admin/')
 
 
-@bp.route('/select_store_from_mypage', methods=['POST'])
-@require_roles(ROLES["SYSTEM_ADMIN"])
-def select_store_from_mypage():
-    """マイページから店舗を選択して店舗管理者ダッシュボードへ"""
-    store_id = request.form.get('store_id')
-    
-    if not store_id:
-        flash('店舗を選択してください', 'error')
-        return redirect(url_for('system_admin.mypage'))
-    
-    # 店舗が存在するか確認
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(_sql(conn, 'SELECT id, "名称", tenant_id FROM "T_店舗" WHERE id = %s AND "有効" = 1'), (store_id,))
-    store = cur.fetchone()
-    
-    if not store:
-        conn.close()
-        flash('選択した店舗が見つかりません', 'error')
-        return redirect(url_for('system_admin.mypage'))
-    
-    # テナント名も取得
-    cur.execute(_sql(conn, 'SELECT "名称" FROM "T_テナント" WHERE id = %s'), (store[2],))
-    tenant = cur.fetchone()
-    conn.close()
-    
-    # セッションに店舗情報とテナント情報を保存
-    session['store_id'] = store[0]
-    session['tenant_id'] = store[2]
-    
-    if tenant:
-        flash(f'店舗「{store[1]}」（テナント: {tenant[0]}）を選択しました', 'success')
-    else:
-        flash(f'店舗「{store[1]}」を選択しました', 'success')
-    
-    # 店舗管理者ダッシュボードへリダイレクト
-    return redirect('/admin/')
+
