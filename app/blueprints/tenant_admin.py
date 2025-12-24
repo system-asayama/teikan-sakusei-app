@@ -11,7 +11,7 @@ bp = Blueprint('tenant_admin', __name__, url_prefix='/tenant_admin')
 
 
 @bp.route('/mypage', methods=['GET', 'POST'])
-@require_roles(ROLES["TENANT_ADMIN"])
+@require_roles(ROLES["SYSTEM_ADMIN"], ROLES["TENANT_ADMIN"])
 def mypage():
     """テナント管理者マイページ"""
     conn = get_db()
@@ -128,7 +128,7 @@ def mypage():
 
 
 @bp.route('/dashboard')
-@require_roles(ROLES["TENANT_ADMIN"])
+@require_roles(ROLES["SYSTEM_ADMIN"], ROLES["TENANT_ADMIN"])
 def dashboard():
     """テナント管理者ダッシュボード"""
     return render_template('tenant_admin_dashboard.html')
@@ -139,7 +139,7 @@ def dashboard():
 # ========================================
 
 @bp.route('/admins')
-@require_roles(ROLES["TENANT_ADMIN"])
+@require_roles(ROLES["SYSTEM_ADMIN"], ROLES["TENANT_ADMIN"])
 def admins():
     """管理者一覧（自テナント内）"""
     user_id = session.get('user_id')
@@ -183,7 +183,7 @@ def admins():
 
 
 @bp.route('/admin/<int:aid>')
-@require_roles(ROLES["TENANT_ADMIN"])
+@require_roles(ROLES["SYSTEM_ADMIN"], ROLES["TENANT_ADMIN"])
 def admin_detail(aid):
     """管理者詳細（自テナント内）"""
     tenant_id = session.get('tenant_id')
@@ -229,7 +229,7 @@ def admin_detail(aid):
 
 
 @bp.route('/admin/new', methods=['GET', 'POST'])
-@require_roles(ROLES["TENANT_ADMIN"])
+@require_roles(ROLES["SYSTEM_ADMIN"], ROLES["TENANT_ADMIN"])
 def admin_new():
     """管理者新規作成（自テナント内）"""
     tenant_id = session.get('tenant_id')
@@ -288,7 +288,7 @@ def admin_new():
 
 
 @bp.route('/admin/<int:aid>/edit', methods=['GET', 'POST'])
-@require_roles(ROLES["TENANT_ADMIN"])
+@require_roles(ROLES["SYSTEM_ADMIN"], ROLES["TENANT_ADMIN"])
 def admin_edit(aid):
     """管理者編集（自テナント内）"""
     tenant_id = session.get('tenant_id')
@@ -350,7 +350,7 @@ def admin_edit(aid):
 
 
 @bp.route('/admin/<int:aid>/delete', methods=['POST'])
-@require_roles(ROLES["TENANT_ADMIN"])
+@require_roles(ROLES["SYSTEM_ADMIN"], ROLES["TENANT_ADMIN"])
 def admin_delete(aid):
     """管理者削除（自テナント内）"""
     tenant_id = session.get('tenant_id')
