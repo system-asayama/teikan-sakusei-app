@@ -1,40 +1,45 @@
 {% extends "base.html" %}
-{% block title %}管理者ダッシュボード{% endblock %}
+{% block title %}店舗管理者ダッシュボード{% endblock %}
 {% block content %}
-<h1>管理者ダッシュボード</h1>
+<h1>店舗管理者ダッシュボード</h1>
 
 <div class="card">
-  <h2>ようこそ、{{ session.user_name }}さん</h2>
-  <p>管理者としてログインしています。</p>
+  <h2>ようこそ、{{ session.get('user_name') }}さん</h2>
+  {% if session.get('role') == 'system_admin' %}
+    <p>システム管理者としてログインしています。</p>
+  {% elif session.get('role') == 'tenant_admin' %}
+    <p>テナント管理者としてログインしています。</p>
+  {% else %}
+    <p>店舗管理者としてログインしています。</p>
+  {% endif %}
   
+  <h3>ロール情報</h3>
+  <ul>
+    <li><strong>ユーザーID:</strong> {{ session.get('user_id') }}</li>
+    <li><strong>氏名:</strong> {{ session.get('user_name') }}</li>
+    <li><strong>ロール:</strong> {{ session.get('role') }}</li>
+    <li><strong>テナントID:</strong> {{ session.get('tenant_id') }}</li>
+  </ul>
+
+  <h3>管理機能</h3>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px">
+    <a class="card" href="{{ url_for('admin.store_info') }}" style="text-decoration:none">
+      <h4>店舗情報</h4>
+      <p class="small" style="color:#666">店舗情報の表示・編集</p>
+    </a>
+    <a class="card" href="{{ url_for('admin.admins') }}" style="text-decoration:none">
+      <h4>管理者管理</h4>
+      <p class="small" style="color:#666">管理者の作成・編集・削除</p>
+    </a>
+    <a class="card" href="{{ url_for('admin.employees') }}" style="text-decoration:none">
+      <h4>従業員管理</h4>
+      <p class="small" style="color:#666">従業員の作成・編集・削除</p>
+    </a>
+  </div>
+
   <div style="margin-top:20px">
-    <h3>ロール情報</h3>
-    <ul>
-      <li><strong>ユーザーID:</strong> {{ session.user_id }}</li>
-      <li><strong>氏名:</strong> {{ session.user_name }}</li>
-      <li><strong>ロール:</strong> {{ session.role }}</li>
-      <li><strong>テナントID:</strong> {{ session.tenant_id or 'なし（全テナント管理可能）' }}</li>
-    </ul>
-  </div>
-
-  <div style="margin-top:30px">
-    <h3>管理機能</h3>
-    <ul style="list-style:none; padding:0; margin-top:12px">
-      <li style="margin:10px 0;"><a href="{{ url_for('teikan.index') }}" class="btn">定款管理</a></li>
-    </ul>
-  </div>
-
-  <div style="margin-top:30px">
-    <a class="btn sub" href="{{ url_for('admin.mypage') }}">マイページ</a>
+    <a class="btn sub" href="{{ mypage_url }}">マイページ</a>
     <a class="btn" href="{{ url_for('auth.logout') }}">ログアウト</a>
   </div>
 </div>
-
-{% if get_flashed_messages() %}
-<div style="margin-top:20px">
-  {% for category, message in get_flashed_messages(with_categories=true) %}
-    <div class="alert alert-{{ category }}">{{ message }}</div>
-  {% endfor %}
-</div>
-{% endif %}
 {% endblock %}

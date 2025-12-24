@@ -13,19 +13,22 @@
       <li><strong>ユーザーID:</strong> {{ session.user_id }}</li>
       <li><strong>氏名:</strong> {{ session.user_name }}</li>
       <li><strong>ロール:</strong> {{ session.role }}</li>
-      <li><strong>テナントID:</strong> {{ session.tenant_id or 'なし（全テナント管理可能）' }}</li>
+      <li><strong>テナントID:</strong> {{ session.tenant_id }}</li>
     </ul>
   </div>
 
   <div style="margin-top:30px">
-    <h3>利用可能機能</h3>
-    <ul style="list-style:none; padding:0; margin-top:12px">
-      <li style="margin:10px 0;"><a href="{{ url_for('teikan.index') }}" class="btn">定款閲覧</a></li>
+    <h3>利用可能な機能</h3>
+    <p>このページは基本的な認証システムのデモです。</p>
+    <ul>
+      <li>勤怠管理</li>
+      <li>シフト確認</li>
+      <li>個人情報の変更</li>
     </ul>
   </div>
 
   <div style="margin-top:30px">
-    <a class="btn sub" href="{{ url_for('employee.mypage') }}">マイページ</a>
+    <a class="btn sub" href="{{ mypage_url }}">マイページ</a>
     <a class="btn" href="{{ url_for('auth.logout') }}">ログアウト</a>
   </div>
 </div>

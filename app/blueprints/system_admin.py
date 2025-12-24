@@ -55,13 +55,19 @@ def mypage():
                 
                 if not login_id or not name:
                     flash('ログインIDと氏名は必須です', 'error')
-                    return render_template('sys_mypage.html', user=user)
+                    # テナントリストを取得
+                    cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
+                    tenant_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+                    return render_template('system_admin_mypage.html', user=user, tenant_list=tenant_list, store_list=[])
                 
                 # ログインID重複チェック（自分以外）
                 cur.execute(_sql(conn, 'SELECT id FROM "T_管理者" WHERE login_id = %s AND id != %s'), (login_id, user_id))
                 if cur.fetchone():
                     flash('このログインIDは既に使用されています', 'error')
-                    return render_template('sys_mypage.html', user=user)
+                    # テナントリストを取得
+                    cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
+                    tenant_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+                    return render_template('system_admin_mypage.html', user=user, tenant_list=tenant_list, store_list=[])
                 
                 # プロフィール更新
                 cur.execute(_sql(conn, '''
@@ -83,19 +89,28 @@ def mypage():
                 # パスワード一致チェック
                 if new_password != new_password_confirm:
                     flash('新しいパスワードが一致しません', 'error')
-                    return render_template('sys_mypage.html', user=user)
+                    # テナントリストを取得
+                    cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
+                    tenant_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+                    return render_template('system_admin_mypage.html', user=user, tenant_list=tenant_list, store_list=[])
                 
                 # パスワード長チェック
                 if len(new_password) < 8:
                     flash('パスワードは8文字以上で設定してください', 'error')
-                    return render_template('sys_mypage.html', user=user)
+                    # テナントリストを取得
+                    cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
+                    tenant_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+                    return render_template('system_admin_mypage.html', user=user, tenant_list=tenant_list, store_list=[])
             
                 # 現在のパスワードを確認
                 cur.execute(_sql(conn, 'SELECT password_hash FROM "T_管理者" WHERE id = %s'), (user_id,))
                 row = cur.fetchone()
                 if not row or not check_password_hash(row[0], current_password):
                     flash('現在のパスワードが正しくありません', 'error')
-                    return render_template('sys_mypage.html', user=user)
+                    # テナントリストを取得
+                    cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
+                    tenant_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+                    return render_template('system_admin_mypage.html', user=user, tenant_list=tenant_list, store_list=[])
                 
                 # パスワード更新
                 new_password_hash = generate_password_hash(new_password)
@@ -109,7 +124,11 @@ def mypage():
                 flash('パスワードを変更しました', 'success')
                 return redirect(url_for('system_admin.mypage'))
         
-        return render_template('sys_mypage.html', user=user)
+        # テナントリストを取得
+        cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
+        tenant_list = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+        
+        return render_template('system_admin_mypage.html', user=user, tenant_list=tenant_list, store_list=[])
     
     finally:
         try:
@@ -493,3 +512,38 @@ def user_delete(uid):
         try: conn.close()
         except: pass
     return redirect(url_for('system_admin.users'))
+
+
+@bp.route('/select_tenant_from_mypage', methods=['POST'])
+@require_roles(ROLES["SYSTEM_ADMIN"])
+def select_tenant_from_mypage():
+    """マイページからテナントを選択してテナント管理者ダッシュボードへ"""
+    tenant_id = request.form.get('tenant_id')
+    
+    if not tenant_id:
+        flash('テナントを選択してください', 'error')
+        return redirect(url_for('system_admin.mypage'))
+    
+    # テナントが存在するか確認
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE id = %s AND "有効" = 1'), (tenant_id,))
+        tenant = cur.fetchone()
+        
+        if not tenant:
+            flash('選択したテナントが見つかりません', 'error')
+            return redirect(url_for('system_admin.mypage'))
+        
+        # セッションにテナント情報を保存
+        session['tenant_id'] = tenant[0]
+        
+        flash(f'テナント「{tenant[1]}」を選択しました', 'success')
+        
+        # テナント管理者ダッシュボードへリダイレクト
+        return redirect(url_for('tenant_admin.dashboard'))
+    finally:
+        try:
+            conn.close()
+        except:
+            pass

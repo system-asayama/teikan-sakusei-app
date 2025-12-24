@@ -5,7 +5,11 @@
 
 <div class="card">
   <h2>ようこそ、{{ session.user_name }}さん</h2>
-  <p>テナント管理者としてログインしています。</p>
+  {% if session.role == 'system_admin' %}
+    <p>システム管理者としてログインしています。</p>
+  {% else %}
+    <p>テナント管理者としてログインしています。</p>
+  {% endif %}
   
   <div style="margin-top:20px">
     <h3>ロール情報</h3>
@@ -13,20 +17,30 @@
       <li><strong>ユーザーID:</strong> {{ session.user_id }}</li>
       <li><strong>氏名:</strong> {{ session.user_name }}</li>
       <li><strong>ロール:</strong> {{ session.role }}</li>
-      <li><strong>テナントID:</strong> {{ session.tenant_id or 'なし（全テナント管理可能）' }}</li>
+      <li><strong>テナントID:</strong> {{ tenant_id }}</li>
     </ul>
   </div>
 
   <div style="margin-top:30px">
     <h3>管理機能</h3>
-    <ul style="list-style:none; padding:0; margin-top:12px">
-      <li style="margin:10px 0;"><a href="{{ url_for('tenant_admin.admins') }}" class="btn">管理者管理</a></li>
-      <li style="margin:10px 0;"><a href="{{ url_for('teikan.index') }}" class="btn">定款管理</a></li>
-    </ul>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px">
+      <a class="card" href="{{ url_for('tenant_admin.tenant_info') }}" style="text-decoration:none">
+        <h4>テナント情報</h4>
+        <p class="small" style="color:#666">テナント情報の表示・編集</p>
+      </a>
+      <a class="card" href="{{ url_for('tenant_admin.tenant_admins') }}" style="text-decoration:none">
+        <h4>テナント管理者管理</h4>
+        <p class="small" style="color:#666">テナント管理者の作成・編集・削除</p>
+      </a>
+      <a class="card" href="{{ url_for('tenant_admin.stores') }}" style="text-decoration:none">
+        <h4>店舗管理</h4>
+        <p class="small" style="color:#666">店舗の作成・編集・削除</p>
+      </a>
+    </div>
   </div>
 
   <div style="margin-top:30px">
-    <a class="btn sub" href="{{ url_for('tenant_admin.mypage') }}">マイページ</a>
+    <a class="btn sub" href="{{ mypage_url }}">マイページ</a>
     <a class="btn" href="{{ url_for('auth.logout') }}">ログアウト</a>
   </div>
 </div>
