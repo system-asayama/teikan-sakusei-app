@@ -18,6 +18,7 @@ def create_app() -> Flask:
         DEBUG=os.getenv("DEBUG", "1") in ("1", "true", "True"),
         VERSION=os.getenv("APP_VERSION", "0.1.0"),
         TZ=os.getenv("TZ", "Asia/Tokyo"),
+        SECRET_KEY=os.getenv("SECRET_KEY", "dev-secret-key-change-in-production"),
     )
 
     # config.py があれば上書き
