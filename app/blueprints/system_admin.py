@@ -976,3 +976,263 @@ def select_store_from_mypage():
     
     # 店舗管理者ダッシュボードへリダイレクト
     return redirect('/admin/')
+
+
+# ============================================================
+# アプリ管理
+# ============================================================
+
+# 利用可能なアプリ一覧の定義
+AVAILABLE_APPS = [
+    {'name': 'survey-system-app', 'display_name': 'アンケートアプリ', 'scope': 'store'},
+    {'name': 'voucher-digitization-app', 'display_name': '伝票デジタル化アプリ', 'scope': 'store'},
+    {'name': 'teikan-sakusei-app', 'display_name': '定款作成アプリ', 'scope': 'tenant'},
+    {'name': 'management-decision-app2', 'display_name': '経営意思決定アプリ', 'scope': 'tenant'},
+]
+
+@bp.route('/app_management')
+@system_admin_required
+def app_management():
+    """アプリ管理トップページ"""
+    return render_template('sys_app_management.html')
+
+@bp.route('/app_management/tenant', methods=['GET', 'POST'])
+@system_admin_required
+def app_management_tenant():
+    """テナント別アプリ設定"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # テナント一覧を取得
+    cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
+    tenants = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+    
+    selected_tenant_id = None
+    tenant_apps = []
+    
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+        
+        if action == 'select_tenant':
+            # テナント選択
+            selected_tenant_id = request.form.get('tenant_id', type=int)
+            
+            if selected_tenant_id:
+                # テナント単位のアプリ一覧を取得
+                tenant_apps_data = {}
+                for app in AVAILABLE_APPS:
+                    if app['scope'] == 'tenant':
+                        cur.execute(_sql(conn, '''
+                            SELECT enabled FROM "T_テナントアプリ設定"
+                            WHERE tenant_id = %s AND app_name = %s
+                        '''), (selected_tenant_id, app['name']))
+                        row = cur.fetchone()
+                        enabled = row[0] if row else 1  # デフォルトは有効
+                        tenant_apps_data[app['name']] = enabled
+                
+                tenant_apps = [
+                    {
+                        'name': app['name'],
+                        'display_name': app['display_name'],
+                        'enabled': tenant_apps_data.get(app['name'], 1)
+                    }
+                    for app in AVAILABLE_APPS if app['scope'] == 'tenant'
+                ]
+        
+        elif action == 'update_apps':
+            # アプリ設定更新
+            selected_tenant_id = request.form.get('tenant_id', type=int)
+            
+            if selected_tenant_id:
+                for app in AVAILABLE_APPS:
+                    if app['scope'] == 'tenant':
+                        enabled = 1 if request.form.get(f'app_{app["name"]}') == 'on' else 0
+                        
+                        # UPSERT処理
+                        cur.execute(_sql(conn, '''
+                            SELECT id FROM "T_テナントアプリ設定"
+                            WHERE tenant_id = %s AND app_name = %s
+                        '''), (selected_tenant_id, app['name']))
+                        
+                        if cur.fetchone():
+                            # 更新
+                            cur.execute(_sql(conn, '''
+                                UPDATE "T_テナントアプリ設定"
+                                SET enabled = %s, updated_at = CURRENT_TIMESTAMP
+                                WHERE tenant_id = %s AND app_name = %s
+                            '''), (enabled, selected_tenant_id, app['name']))
+                        else:
+                            # 挿入
+                            cur.execute(_sql(conn, '''
+                                INSERT INTO "T_テナントアプリ設定" (tenant_id, app_name, enabled)
+                                VALUES (%s, %s, %s)
+                            '''), (selected_tenant_id, app['name'], enabled))
+                
+                conn.commit()
+                flash('テナントのアプリ設定を更新しました', 'success')
+                
+                # 更新後のデータを再取得
+                tenant_apps_data = {}
+                for app in AVAILABLE_APPS:
+                    if app['scope'] == 'tenant':
+                        cur.execute(_sql(conn, '''
+                            SELECT enabled FROM "T_テナントアプリ設定"
+                            WHERE tenant_id = %s AND app_name = %s
+                        '''), (selected_tenant_id, app['name']))
+                        row = cur.fetchone()
+                        enabled = row[0] if row else 1
+                        tenant_apps_data[app['name']] = enabled
+                
+                tenant_apps = [
+                    {
+                        'name': app['name'],
+                        'display_name': app['display_name'],
+                        'enabled': tenant_apps_data.get(app['name'], 1)
+                    }
+                    for app in AVAILABLE_APPS if app['scope'] == 'tenant'
+                ]
+    
+    conn.close()
+    
+    return render_template('sys_app_management_tenant.html',
+                         tenants=tenants,
+                         selected_tenant_id=selected_tenant_id,
+                         tenant_apps=tenant_apps)
+
+@bp.route('/app_management/store', methods=['GET', 'POST'])
+@system_admin_required
+def app_management_store():
+    """店舗別アプリ設定"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    # テナント一覧を取得
+    cur.execute(_sql(conn, 'SELECT id, "名称" FROM "T_テナント" WHERE "有効" = 1 ORDER BY id'))
+    tenants = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+    
+    selected_tenant_id = None
+    selected_store_id = None
+    stores = []
+    store_apps = []
+    
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+        
+        if action == 'select_tenant':
+            # テナント選択
+            selected_tenant_id = request.form.get('tenant_id', type=int)
+            
+            if selected_tenant_id:
+                # 店舗一覧を取得
+                cur.execute(_sql(conn, '''
+                    SELECT id, "名称" FROM "T_店舗"
+                    WHERE tenant_id = %s AND "有効" = 1
+                    ORDER BY id
+                '''), (selected_tenant_id,))
+                stores = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+        
+        elif action == 'select_store':
+            # 店舗選択
+            selected_tenant_id = request.form.get('tenant_id', type=int)
+            selected_store_id = request.form.get('store_id', type=int)
+            
+            if selected_tenant_id:
+                cur.execute(_sql(conn, '''
+                    SELECT id, "名称" FROM "T_店舗"
+                    WHERE tenant_id = %s AND "有効" = 1
+                    ORDER BY id
+                '''), (selected_tenant_id,))
+                stores = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+            
+            if selected_store_id:
+                # 店舗単位のアプリ一覧を取得
+                store_apps_data = {}
+                for app in AVAILABLE_APPS:
+                    if app['scope'] == 'store':
+                        cur.execute(_sql(conn, '''
+                            SELECT enabled FROM "T_店舗アプリ設定"
+                            WHERE store_id = %s AND app_name = %s
+                        '''), (selected_store_id, app['name']))
+                        row = cur.fetchone()
+                        enabled = row[0] if row else 1  # デフォルトは有効
+                        store_apps_data[app['name']] = enabled
+                
+                store_apps = [
+                    {
+                        'name': app['name'],
+                        'display_name': app['display_name'],
+                        'enabled': store_apps_data.get(app['name'], 1)
+                    }
+                    for app in AVAILABLE_APPS if app['scope'] == 'store'
+                ]
+        
+        elif action == 'update_apps':
+            # アプリ設定更新
+            selected_tenant_id = request.form.get('tenant_id', type=int)
+            selected_store_id = request.form.get('store_id', type=int)
+            
+            if selected_tenant_id:
+                cur.execute(_sql(conn, '''
+                    SELECT id, "名称" FROM "T_店舗"
+                    WHERE tenant_id = %s AND "有効" = 1
+                    ORDER BY id
+                '''), (selected_tenant_id,))
+                stores = [{'id': row[0], 'name': row[1]} for row in cur.fetchall()]
+            
+            if selected_store_id:
+                for app in AVAILABLE_APPS:
+                    if app['scope'] == 'store':
+                        enabled = 1 if request.form.get(f'app_{app["name"]}') == 'on' else 0
+                        
+                        # UPSERT処理
+                        cur.execute(_sql(conn, '''
+                            SELECT id FROM "T_店舗アプリ設定"
+                            WHERE store_id = %s AND app_name = %s
+                        '''), (selected_store_id, app['name']))
+                        
+                        if cur.fetchone():
+                            # 更新
+                            cur.execute(_sql(conn, '''
+                                UPDATE "T_店舗アプリ設定"
+                                SET enabled = %s, updated_at = CURRENT_TIMESTAMP
+                                WHERE store_id = %s AND app_name = %s
+                            '''), (enabled, selected_store_id, app['name']))
+                        else:
+                            # 挿入
+                            cur.execute(_sql(conn, '''
+                                INSERT INTO "T_店舗アプリ設定" (store_id, app_name, enabled)
+                                VALUES (%s, %s, %s)
+                            '''), (selected_store_id, app['name'], enabled))
+                
+                conn.commit()
+                flash('店舗のアプリ設定を更新しました', 'success')
+                
+                # 更新後のデータを再取得
+                store_apps_data = {}
+                for app in AVAILABLE_APPS:
+                    if app['scope'] == 'store':
+                        cur.execute(_sql(conn, '''
+                            SELECT enabled FROM "T_店舗アプリ設定"
+                            WHERE store_id = %s AND app_name = %s
+                        '''), (selected_store_id, app['name']))
+                        row = cur.fetchone()
+                        enabled = row[0] if row else 1
+                        store_apps_data[app['name']] = enabled
+                
+                store_apps = [
+                    {
+                        'name': app['name'],
+                        'display_name': app['display_name'],
+                        'enabled': store_apps_data.get(app['name'], 1)
+                    }
+                    for app in AVAILABLE_APPS if app['scope'] == 'store'
+                ]
+    
+    conn.close()
+    
+    return render_template('sys_app_management_store.html',
+                         tenants=tenants,
+                         stores=stores,
+                         selected_tenant_id=selected_tenant_id,
+                         selected_store_id=selected_store_id,
+                         store_apps=store_apps)
