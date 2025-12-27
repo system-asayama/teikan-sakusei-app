@@ -95,6 +95,12 @@
       <input type="email" id="email" name="email" value="{{ user.email or '' }}" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:3px">
     </div>
     
+    <div style="margin-bottom:15px">
+      <label for="openai_api_key" style="display:block; margin-bottom:5px">OpenAI APIキー</label>
+      <input type="password" id="openai_api_key" name="openai_api_key" value="{{ user.openai_api_key or '' }}" placeholder="sk-..." style="width:100%; padding:8px; border:1px solid #ddd; border-radius:3px">
+      <small style="color:#666; display:block; margin-top:5px">システム全体のデフォルトAPIキーとして使用されます</small>
+    </div>
+    
     <button type="submit" class="btn">プロフィールを更新</button>
   </form>
 

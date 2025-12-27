@@ -102,7 +102,7 @@ def tenant_new():
         # テナント作成
         cur.execute(_sql(conn, '''
             INSERT INTO "T_テナント" (名称, slug, 有効)
-            VALUES (%s, %s, 1)
+            VALUES (?, ?, 1)
         '''), (name, slug))
         conn.commit()
         conn.close()
@@ -356,20 +356,10 @@ def tenant_admin_edit(tid, admin_id):
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
-        password_confirm = request.form.get('password_confirm', '').strip()
         active = 1 if request.form.get('active') == '1' else 0
-        
-        # オーナー権限を確認
-        cur.execute(_sql(conn, 'SELECT is_owner FROM "T_管理者" WHERE id = %s'), (admin_id,))
-        row_owner = cur.fetchone()
-        is_owner = row_owner[0] if row_owner else 0
         
         if not login_id or not name:
             flash('ログインIDと氏名は必須です', 'error')
-        elif password and password != password_confirm:
-            flash('パスワードが一致しません', 'error')
-        elif is_owner == 1 and active == 0:
-            flash('オーナーを無効にすることはできません。先にオーナー権限を移譲してください。', 'error')
         else:
             # ログインIDの重複チェック
             cur.execute(_sql(conn, 'SELECT id FROM "T_管理者" WHERE login_id = %s AND id != %s'), (login_id, admin_id))
@@ -397,7 +387,7 @@ def tenant_admin_edit(tid, admin_id):
     
     # GETリクエスト時は現在の情報を表示
     cur.execute(_sql(conn, '''
-        SELECT id, login_id, name, email, active, is_owner
+        SELECT id, login_id, name, email, active
         FROM "T_管理者"
         WHERE id = %s AND tenant_id = %s AND role = %s
     '''), (admin_id, tid, ROLES["TENANT_ADMIN"]))
@@ -414,8 +404,7 @@ def tenant_admin_edit(tid, admin_id):
         'login_id': admin_row[1],
         'name': admin_row[2],
         'email': admin_row[3],
-        'active': admin_row[4],
-        'is_owner': admin_row[5]
+        'active': admin_row[4]
     }
     
     return render_template('sys_tenant_admin_edit.html', tenant=tenant, admin=admin)
@@ -428,26 +417,15 @@ def tenant_admin_delete(tid, admin_id):
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # オーナーフラグを確認
     cur.execute(_sql(conn, '''
-        SELECT name, is_owner FROM "T_管理者"
+        DELETE FROM "T_管理者"
         WHERE id = %s AND tenant_id = %s AND role = %s
     '''), (admin_id, tid, ROLES["TENANT_ADMIN"]))
-    row = cur.fetchone()
     
-    if not row:
-        flash('テナント管理者が見つかりません', 'error')
-    elif row[1] == 1:
-        flash('オーナーは削除できません。先にオーナー権限を移譲してください。', 'error')
-    else:
-        cur.execute(_sql(conn, '''
-            DELETE FROM "T_管理者"
-            WHERE id = %s AND tenant_id = %s AND role = %s
-        '''), (admin_id, tid, ROLES["TENANT_ADMIN"]))
-        conn.commit()
-        flash(f'テナント管理者「{row[0]}」を削除しました', 'success')
-    
+    conn.commit()
     conn.close()
+    
+    flash('テナント管理者を削除しました', 'success')
     return redirect(url_for('system_admin.tenant_admins', tid=tid))
 
 
@@ -590,14 +568,8 @@ def system_admin_delete(admin_id):
     target_can_manage = row[1]
     target_is_owner = row[2]
     
-    # オーナーは削除できない
-    if target_is_owner == 1:
-        flash('オーナーは削除できません。先にオーナー権限を移譲してください。', 'error')
-        conn.close()
-        return redirect(url_for('system_admin.system_admins'))
-    
     # オーナー以外の場合、同じ権限を持つユーザーは削除不可
-    if not is_owner() and target_can_manage == 1:
+    if not is_owner() and (target_can_manage == 1 or target_is_owner == 1):
         flash('システム管理者管理権限を持つ他のユーザーは削除できません', 'error')
         conn.close()
         return redirect(url_for('system_admin.system_admins'))
@@ -641,7 +613,6 @@ def transfer_ownership(admin_id):
     # 全てのis_ownerを0にしてから、指定したユーザーを1にする
     cur.execute(_sql(conn, 'UPDATE "T_管理者" SET is_owner = 0 WHERE role = %s'), (ROLES["SYSTEM_ADMIN"],))
     cur.execute(_sql(conn, 'UPDATE "T_管理者" SET is_owner = 1 WHERE id = %s'), (admin_id,))
-    conn.commit()
     conn.close()
     
     flash(f'オーナー権限を「{new_owner_name}」に移譲しました', 'success')
@@ -798,7 +769,7 @@ def mypage():
     cur = conn.cursor()
     
     cur.execute(_sql(conn, '''
-        SELECT id, login_id, name, email, is_owner, can_manage_admins, created_at, updated_at
+        SELECT id, login_id, name, email, is_owner, can_manage_admins, openai_api_key, created_at, updated_at
         FROM "T_管理者"
         WHERE id = %s AND role = %s
     '''), (user_id, ROLES["SYSTEM_ADMIN"]))
@@ -817,9 +788,10 @@ def mypage():
         'email': row[3],
         'is_owner': row[4],
         'can_manage_admins': row[5],
+        'openai_api_key': row[6],
         'role': ROLES["SYSTEM_ADMIN"],
-        'created_at': row[6],
-        'updated_at': row[7]
+        'created_at': row[7],
+        'updated_at': row[8]
     }
     
     # POSTリクエスト（プロフィール編集またはパスワード変更）
@@ -831,6 +803,7 @@ def mypage():
             login_id = request.form.get('login_id', '').strip()
             name = request.form.get('name', '').strip()
             email = request.form.get('email', '').strip()
+            openai_api_key = request.form.get('openai_api_key', '').strip()
             
             if not login_id or not name:
                 conn.close()
@@ -847,9 +820,9 @@ def mypage():
             # プロフィール更新
             cur.execute(_sql(conn, '''
                 UPDATE "T_管理者"
-                SET login_id = %s, name = %s, email = %s, updated_at = CURRENT_TIMESTAMP
+                SET login_id = %s, name = %s, email = %s, openai_api_key = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
-            '''), (login_id, name, email, user_id))
+            '''), (login_id, name, email, openai_api_key, user_id))
             conn.commit()
             conn.close()
             
@@ -923,6 +896,8 @@ def mypage():
     # 店舗リストを取得
     cur.execute(_sql(conn, 'SELECT id, "名称", tenant_id FROM "T_店舗" WHERE "有効" = 1 ORDER BY tenant_id, id'))
     store_list = [{'id': row[0], 'name': row[1], 'tenant_id': row[2]} for row in cur.fetchall()]
+    
+    # テナント名を店舗リストに追加
     for store in store_list:
         cur.execute(_sql(conn, 'SELECT "名称" FROM "T_テナント" WHERE id = %s'), (store['tenant_id'],))
         tenant_row = cur.fetchone()
@@ -1001,6 +976,3 @@ def select_store_from_mypage():
     
     # 店舗管理者ダッシュボードへリダイレクト
     return redirect('/admin/')
-
-
-
