@@ -16,8 +16,7 @@ def init_database():
         # アプリケーションのインポート
         from app.db import Base, engine, SessionLocal
         from app import models_login, models_auth
-        from app.models_login import M_管理者, M_テナント, M_店舗
-        from app.models_auth import M_テナントレベルアプリ
+        from app.models_login import TKanrisha, TTenant, TTenpo, TTenantAppSetting
         from app.utils import hash_password
         
         print("📦 データベーステーブルを作成中...")
@@ -29,7 +28,7 @@ def init_database():
         
         try:
             # システム管理者が既に存在するか確認
-            existing_admin = db.query(M_管理者).filter_by(login_id='admin').first()
+            existing_admin = db.query(TKanrisha).filter_by(login_id='admin').first()
             
             if existing_admin:
                 print("ℹ️  システム管理者は既に存在します。初期データの投入をスキップします。")
@@ -38,65 +37,53 @@ def init_database():
             print("📝 初期データを投入中...")
             
             # 1. システム管理者を作成
-            admin = M_管理者(
+            admin = TKanrisha(
                 login_id='admin',
-                password=hash_password('admin123'),
+                password_hash=hash_password('admin123'),
                 name='システム管理者',
                 email='admin@example.com',
                 role='system_admin',
-                is_owner=True,
-                can_manage_admins=True,
-                created_at=datetime.now(),
-                updated_at=datetime.now()
+                is_owner=1,
+                can_manage_admins=1
             )
             db.add(admin)
             db.flush()  # IDを取得するためにflush
             
             # 2. サンプルテナントを作成
-            tenant = M_テナント(
+            tenant = TTenant(
                 名称='サンプル株式会社',
                 slug='sample-corp',
-                有効=True,
-                created_at=datetime.now(),
-                updated_at=datetime.now()
+                有効=1
             )
             db.add(tenant)
             db.flush()
             
             # 3. 店舗を作成
             stores = [
-                M_店舗(
+                TTenpo(
                     名称='本店',
                     tenant_id=tenant.id,
-                    有効=True,
-                    created_at=datetime.now(),
-                    updated_at=datetime.now()
+                    有効=1
                 ),
-                M_店舗(
+                TTenpo(
                     名称='支店A',
                     tenant_id=tenant.id,
-                    有効=True,
-                    created_at=datetime.now(),
-                    updated_at=datetime.now()
+                    有効=1
                 ),
-                M_店舗(
+                TTenpo(
                     名称='支店B',
                     tenant_id=tenant.id,
-                    有効=True,
-                    created_at=datetime.now(),
-                    updated_at=datetime.now()
+                    有効=1
                 )
             ]
             for store in stores:
                 db.add(store)
             
             # 4. 定款作成アプリをテナントレベルアプリとして有効化
-            teikan_app = M_テナントレベルアプリ(
+            teikan_app = TTenantAppSetting(
                 tenant_id=tenant.id,
-                app_key='teikan',
-                有効=True,
-                created_at=datetime.now(),
-                updated_at=datetime.now()
+                app_name='teikan',
+                enabled=1
             )
             db.add(teikan_app)
             
