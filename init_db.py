@@ -17,7 +17,7 @@ def init_database():
         from app.db import Base, engine, SessionLocal
         from app import models_login, models_auth
         from app.models_login import TKanrisha, TTenant, TTenpo, TTenantAppSetting
-        from app.utils import hash_password
+        from werkzeug.security import generate_password_hash
         
         print("📦 データベーステーブルを作成中...")
         Base.metadata.create_all(bind=engine)
@@ -39,7 +39,7 @@ def init_database():
             # 1. システム管理者を作成
             admin = TKanrisha(
                 login_id='admin',
-                password_hash=hash_password('admin123'),
+                password_hash=generate_password_hash('admin123'),
                 name='システム管理者',
                 email='admin@example.com',
                 role='system_admin',
