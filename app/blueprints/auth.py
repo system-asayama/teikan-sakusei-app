@@ -6,7 +6,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from ..utils import get_db, _sql, login_user, admin_exists, ROLES
-from ..utils.db import _sql
 
 bp = Blueprint('auth', __name__)
 
@@ -16,7 +15,7 @@ def index():
     """トップページ - ロール別リダイレクト"""
     role = session.get("role")
     if role == ROLES["SYSTEM_ADMIN"]:
-        return redirect(url_for('system_admin.dashboard'))
+        return redirect(url_for('system_admin.mypage'))
     if role == ROLES["TENANT_ADMIN"]:
         return redirect(url_for('tenant_admin.dashboard'))
     if role == ROLES["ADMIN"]:
@@ -51,11 +50,12 @@ def first_admin_setup():
         else:
             name = (request.form.get('name') or '').strip()
             login_id = (request.form.get('login_id') or '').strip()
+            email = (request.form.get('email') or '').strip()
             password = request.form.get('password') or ''
             confirm = request.form.get('confirm') or ''
 
             # --- 入力バリデーション ---
-            if not name or not login_id or not password or not confirm:
+            if not name or not login_id or not email or not password or not confirm:
                 error = "すべての項目を入力してください。"
             elif len(password) < 8:
                 error = "パスワードは8文字以上にしてください。"
@@ -76,10 +76,10 @@ def first_admin_setup():
                     else:
                         ph = generate_password_hash(password)
                         sql_ins = _sql(conn, '''
-                            INSERT INTO "T_管理者"(login_id, name, password_hash, role, tenant_id, is_owner, can_manage_admins)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            INSERT INTO "T_管理者"(login_id, name, email, password_hash, role, tenant_id, is_owner, can_manage_admins)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         ''')
-                        cur.execute(sql_ins, (login_id, name, ph, ROLES["SYSTEM_ADMIN"], None, 1, 1))
+                        cur.execute(sql_ins, (login_id, name, email, ph, ROLES["SYSTEM_ADMIN"], None, 1, 1))
                         from ..utils.db import _is_pg
                         if not _is_pg(conn):
                             conn.commit()
@@ -104,12 +104,13 @@ def system_admin_login():
         conn = get_db()
         try:
             cur = conn.cursor()
-            sql = _sql(conn, 'SELECT id, name, password_hash, tenant_id FROM "T_管理者" WHERE login_id=%s AND role=%s')
+            sql = _sql(conn, 'SELECT id, name, password_hash, tenant_id, is_owner FROM "T_管理者" WHERE login_id=%s AND role=%s')
             cur.execute(sql, (login_id, ROLES["SYSTEM_ADMIN"]))
             row = cur.fetchone()
             if row and check_password_hash(row[2], password):
-                user_id, name, tenant_id = row[0], row[1], row[3]
+                user_id, name, tenant_id, is_owner = row[0], row[1], row[3], row[4]
                 login_user(user_id, name, ROLES["SYSTEM_ADMIN"], tenant_id)
+                session['is_owner'] = (is_owner == 1)
                 return redirect(url_for('system_admin.mypage'))
             error = "ログインIDまたはパスワードが違います"
         finally:
@@ -133,11 +134,7 @@ def tenant_admin_login():
             row = cur.fetchone()
             if row and check_password_hash(row[2], password):
                 user_id, name, tenant_id, is_owner = row[0], row[1], row[3], row[4]
-                # セッションに保存
-                session['user_id'] = user_id
-                session['user_name'] = name
-                session['role'] = ROLES["TENANT_ADMIN"]
-                session['tenant_id'] = tenant_id
+                login_user(user_id, name, ROLES["TENANT_ADMIN"], tenant_id)
                 session['is_owner'] = (is_owner == 1)
                 return redirect(url_for('tenant_admin.mypage'))
             else:
@@ -166,11 +163,7 @@ def admin_login():
                 if not tenant_id:
                     error = "この管理者にはテナントが紐づいていません。"
                 else:
-                    # セッションにユーザー情報を保存（店舗未選択）
-                    session['user_id'] = user_id
-                    session['user_name'] = name
-                    session['tenant_id'] = tenant_id
-                    session['role'] = ROLES["ADMIN"]
+                    login_user(user_id, name, ROLES["ADMIN"], tenant_id)
                     session['store_id'] = None  # 店舗未選択
                     session['is_owner'] = (is_owner == 1)
                     return redirect(url_for('admin.mypage'))
@@ -199,19 +192,11 @@ def employee_login():
                 user_id, name, hashv, tenant_id = row[0], row[1], row[2], row[3]
                 # 初回パス未設定 + 123456 を許容
                 if (not hashv or hashv == '') and password == '123456':
-                    # セッションにユーザー情報を保存（店舗未選択）
-                    session['user_id'] = user_id
-                    session['user_name'] = name
-                    session['tenant_id'] = tenant_id
-                    session['role'] = ROLES["EMPLOYEE"]
+                    login_user(user_id, name, ROLES["EMPLOYEE"], tenant_id, is_employee=True)
                     session['store_id'] = None  # 店舗未選択
                     return redirect(url_for('employee.mypage'))
                 if hashv and check_password_hash(hashv, password):
-                    # セッションにユーザー情報を保存（店舗未選択）
-                    session['user_id'] = user_id
-                    session['user_name'] = name
-                    session['tenant_id'] = tenant_id
-                    session['role'] = ROLES["EMPLOYEE"]
+                    login_user(user_id, name, ROLES["EMPLOYEE"], tenant_id, is_employee=True)
                     session['store_id'] = None  # 店舗未選択
                     return redirect(url_for('employee.mypage'))
             error = "ログインIDまたはパスワードが違います"
@@ -241,7 +226,7 @@ def logout():
 @bp.route('/system_admin')
 def system_admin_redirect():
     """元のapp.pyとの互換性のため /system_admin → /system_admin/ へリダイレクト"""
-    return redirect(url_for('system_admin.dashboard'))
+    return redirect(url_for('system_admin.mypage'))
 
 
 @bp.route('/tenant_admin')

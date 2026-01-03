@@ -17,19 +17,6 @@ def login_user(user_id: int, name: str, role: str, tenant_id: Optional[int], is_
     session["role"] = role
     session["tenant_id"] = tenant_id  # system_admin は None 可
     session["is_employee"] = bool(is_employee)
-    
-    # is_ownerをセッションに保存
-    conn = get_db()
-    try:
-        cur = conn.cursor()
-        cur.execute(_sql(conn, 'SELECT COALESCE(is_owner, 0) FROM "T_管理者" WHERE id = %s'), (user_id,))
-        row = cur.fetchone()
-        session["is_owner"] = (row[0] == 1) if row and row[0] is not None else False
-    finally:
-        try:
-            conn.close()
-        except:
-            pass
 
 
 def admin_exists() -> bool:
@@ -130,26 +117,27 @@ def is_tenant_owner() -> bool:
 
 def can_manage_tenant_admins() -> bool:
     """
-    現在ログイン中のユーザーが管理者管理権限を持っているかを確認
-    システム管理者とテナント管理者は無条件でTrue
+    現在ログイン中のテナント管理者が管理者管理権限を持っているかを確認
+    オーナーは常にTrue、それ以外はcan_manage_adminsフラグで判定
+    システム管理者は常にTrue
     """
+    user_id = session.get('user_id')
     role = session.get('role')
     
-    # システム管理者とテナント管理者は無条件で権限あり
-    if role == 'system_admin' or role == 'tenant_admin':
+    # システム管理者は常に権限あり
+    if role == 'system_admin':
         return True
     
+    if not user_id or role != 'tenant_admin':
+        return False
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(_sql(conn, 'SELECT is_owner, can_manage_admins FROM "T_管理者" WHERE id = %s'), (user_id,))
+    row = cur.fetchone()
+    conn.close()
+    
+    if row:
+        # オーナーは常にTrue、それ以外はcan_manage_adminsで判定
+        return row[0] == 1 or row[1] == 1
     return False
-
-
-from werkzeug.security import generate_password_hash, check_password_hash
-
-
-def hash_password(password: str) -> str:
-    """パスワードをハッシュ化する"""
-    return generate_password_hash(password)
-
-
-def verify_password(password: str, password_hash: str) -> bool:
-    """パスワードを検証する"""
-    return check_password_hash(password_hash, password)

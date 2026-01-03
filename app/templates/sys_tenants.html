@@ -2,6 +2,15 @@
 {% block title %}テナント一覧{% endblock %}
 {% block content %}
 <style>
+  .tenant-name-link {
+    color: #333;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  .tenant-name-link:hover {
+    text-decoration: underline;
+    color: #007bff;
+  }
   @media (max-width: 768px) {
     .tenant-table {
       display: none;
@@ -68,6 +77,13 @@
   <a class="btn sub" href="{{ url_for('system_admin.dashboard') }}">ダッシュボードに戻る</a>
 </div>
 
+<!-- 検索フィールド -->
+<div style="margin-bottom:20px">
+  <input type="text" id="searchInput" placeholder="テナント名またはSlugで検索..." 
+         style="width:100%;max-width:400px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:16px">
+  <span id="searchResult" style="margin-left:10px;color:#666"></span>
+</div>
+
 {% if tenants %}
 <!-- デスクトップ用テーブル -->
 <table class="tenant-table" style="width:100%;border-collapse:collapse">
@@ -82,9 +98,10 @@
   </thead>
   <tbody>
     {% for t in tenants %}
-    <tr style="border-bottom:1px solid #eee">
+    <tr class="tenant-row" data-name="{{ t.名称 }}" data-slug="{{ t.slug }}" 
+        style="border-bottom:1px solid #eee">
       <td style="padding:12px">{{ t.id }}</td>
-      <td style="padding:12px"><strong>{{ t.名称 }}</strong></td>
+      <td style="padding:12px"><a href="{{ url_for('system_admin.tenant_detail', tid=t.id) }}" class="tenant-name-link">{{ t.名称 }}</a></td>
       <td style="padding:12px"><code>{{ t.slug }}</code></td>
       <td style="padding:12px">
         {% if t.有効 == 1 %}
@@ -97,10 +114,9 @@
         <div style="display:flex;gap:8px">
           <a class="btn small" href="{{ url_for('system_admin.tenant_detail', tid=t.id) }}">詳細</a>
           <a class="btn small secondary" href="{{ url_for('system_admin.tenant_edit', tid=t.id) }}">編集</a>
-          <form method="post" action="{{ url_for('system_admin.tenant_delete', tid=t.id) }}" 
-                onsubmit="return confirm('本当に削除しますか？');" style="display:inline">
-            <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
-          </form>
+          <button class="btn small" type="button" style="background:#d32f2f" 
+                  data-tenant-id="{{ t.id }}" data-tenant-name="{{ t.名称 }}" 
+                  onclick="showDeleteModal(this.getAttribute('data-tenant-id'), this.getAttribute('data-tenant-name'))">削除</button>
         </div>
       </td>
     </tr>
@@ -111,14 +127,14 @@
 <!-- スマホ用カード -->
 <div class="tenant-cards">
   {% for t in tenants %}
-  <div class="tenant-card">
+  <div class="tenant-card" data-name="{{ t.名称 }}" data-slug="{{ t.slug }}">
     <div class="tenant-card-row">
       <div class="tenant-card-label">ID:</div>
       <div class="tenant-card-value">{{ t.id }}</div>
     </div>
     <div class="tenant-card-row">
       <div class="tenant-card-label">名称:</div>
-      <div class="tenant-card-value"><strong>{{ t.名称 }}</strong></div>
+      <div class="tenant-card-value"><a href="{{ url_for('system_admin.tenant_detail', tid=t.id) }}" class="tenant-name-link">{{ t.名称 }}</a></div>
     </div>
     <div class="tenant-card-row">
       <div class="tenant-card-label">Slug:</div>
@@ -138,10 +154,9 @@
     <div class="tenant-card-actions">
       <a class="btn small" href="{{ url_for('system_admin.tenant_detail', tid=t.id) }}">詳細</a>
       <a class="btn small secondary" href="{{ url_for('system_admin.tenant_edit', tid=t.id) }}">編集</a>
-      <form method="post" action="{{ url_for('system_admin.tenant_delete', tid=t.id) }}" 
-            onsubmit="return confirm('本当に削除しますか？');">
-        <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
-      </form>
+      <button class="btn small" type="button" style="background:#d32f2f" 
+              data-tenant-id="{{ t.id }}" data-tenant-name="{{ t.名称 }}" 
+              onclick="showDeleteModal(this.getAttribute('data-tenant-id'), this.getAttribute('data-tenant-name'))">削除</button>
     </div>
   </div>
   {% endfor %}
@@ -164,4 +179,105 @@
   {% endfor %}
 </div>
 {% endif %}
+
+<!-- 削除確認モーダル -->
+<div id="deleteModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;">
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:30px;border-radius:8px;max-width:500px;width:90%;">
+    <h2 style="color:#d32f2f;margin-top:0">⚠️ 警告</h2>
+    <p style="margin-bottom:20px;line-height:1.6">
+      <strong id="tenantName"></strong> を削除すると、以下の関連データも全て削除されます：
+    </p>
+    <ul style="margin-bottom:20px;line-height:1.8;color:#666">
+      <li>テナントに紐づく全ての店舗</li>
+      <li>テナントに紐づく全ての管理者</li>
+      <li>テナントに紐づく全ての従業員</li>
+      <li>テナントに紐づく全てのアプリ設定</li>
+    </ul>
+    <p style="margin-bottom:20px;color:#d32f2f;font-weight:bold">
+      この操作は取り消せません。
+    </p>
+    <p style="margin-bottom:10px">
+      削除を実行するには、ログイン時のパスワードを入力してください：
+    </p>
+    <form id="deleteForm" method="post" action="">
+      <input type="password" name="password" placeholder="パスワード" required 
+             style="width:100%;padding:10px;margin-bottom:20px;border:1px solid #ddd;border-radius:4px;font-size:16px">
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="button" class="btn sub" onclick="hideDeleteModal()">キャンセル</button>
+        <button type="submit" class="btn" style="background:#d32f2f">削除する</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showDeleteModal(tenantId, tenantName) {
+  document.getElementById('tenantName').textContent = tenantName;
+  document.getElementById('deleteForm').action = '/system_admin/tenants/' + tenantId + '/delete';
+  document.getElementById('deleteModal').style.display = 'block';
+}
+
+function hideDeleteModal() {
+  document.getElementById('deleteModal').style.display = 'none';
+  document.getElementById('deleteForm').reset();
+}
+
+// モーダル外をクリックしたら閉じる
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    hideDeleteModal();
+  }
+});
+
+// 検索機能
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchInput');
+  const searchResult = document.getElementById('searchResult');
+  const tenantRows = document.querySelectorAll('.tenant-row');
+  const tenantCards = document.querySelectorAll('.tenant-card');
+  
+  function performSearch() {
+    const query = searchInput.value.toLowerCase().trim();
+    let visibleCount = 0;
+    
+    // テーブル行を検索
+    tenantRows.forEach(function(row) {
+      const name = row.dataset.name.toLowerCase();
+      const slug = row.dataset.slug.toLowerCase();
+      
+      if (query === '' || name.includes(query) || slug.includes(query)) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+    
+    // カードを検索
+    tenantCards.forEach(function(card) {
+      const name = card.dataset.name.toLowerCase();
+      const slug = card.dataset.slug.toLowerCase();
+      
+      if (query === '' || name.includes(query) || slug.includes(query)) {
+        card.style.display = '';
+        visibleCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+    
+    // 検索結果を表示
+    if (query === '') {
+      searchResult.textContent = '';
+    } else {
+      const totalCount = tenantRows.length;
+      searchResult.textContent = visibleCount + ' / ' + totalCount + ' 件表示中';
+    }
+  }
+  
+  // 入力イベントをリスン
+  searchInput.addEventListener('input', performSearch);
+  searchInput.addEventListener('keyup', performSearch);
+});
+</script>
 {% endblock %}

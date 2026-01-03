@@ -1,310 +1,306 @@
 {% extends "base.html" %}
-{% block title %}管理者一覧{% endblock %}
+{% block title %}店舗管理者一覧{% endblock %}
 {% block content %}
 <style>
+  .admin-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+  
+  .admin-table thead tr {
+    background: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+  }
+  
+  .admin-table th {
+    padding: 8px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  
+  .admin-table tbody tr {
+    border-bottom: 1px solid #eee;
+  }
+  
+  .admin-table tbody tr.owner-row {
+    background: #fffbf0;
+  }
+  
+  .admin-table td {
+    padding: 8px;
+    white-space: nowrap;
+  }
+  
+  .admin-table td[data-label="所属店舗: "] {
+    white-space: normal;
+  }
+  
+  .admin-table .btn.small {
+    font-size: 0.9em;
+    padding: 4px 8px;
+  }
+  
   /* スマホ用カード型レイアウト */
   @media (max-width: 768px) {
-    .admin-table {
+    .admin-table-wrapper {
+      overflow-x: visible;
+    }
+    
+    .admin-table thead {
       display: none;
     }
     
-    .admin-cards {
+    .admin-table tbody {
       display: block;
     }
     
-    .admin-card {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 16px;
+    .admin-table tbody tr {
+      display: block;
       margin-bottom: 16px;
+      padding: 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
     }
     
-    .admin-card.owner {
+    .admin-table tbody tr.owner-row {
       background: #fffbf0;
+      border-color: #ffd700;
     }
     
-    .admin-card-row {
-      display: flex;
-      justify-content: space-between;
+    .admin-table td {
+      display: block;
       padding: 8px 0;
-      border-bottom: 1px solid #f0f0f0;
+      white-space: normal;
+      border: none;
     }
     
-    .admin-card-row:last-child {
-      border-bottom: none;
+    .admin-table td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      display: inline-block;
+      width: 100px;
+      color: #374151;
     }
     
-    .admin-card-label {
-      font-weight: bold;
-      color: #666;
-      min-width: 100px;
+    .admin-table td[data-label="所属店舗: "] {
+      position: relative;
     }
     
-    .admin-card-value {
-      text-align: right;
-      flex: 1;
+    .admin-table td[data-label="所属店舗: "]::before {
+      display: inline-block;
+      position: absolute;
+      left: 0;
     }
     
-    .admin-card-actions {
-      margin-top: 12px;
+    .admin-table td[data-label="所属店舗: "] span {
+      margin-left: 100px;
+    }
+    
+    .admin-table td[data-label="所属店舗: "] span:first-child {
+      display: inline !important;
+    }
+    
+    .admin-table td[data-label="所属店舗: "] span:not(:first-child) {
+      display: block;
+    }
+    
+    .admin-table td.admin-actions {
       padding-top: 12px;
-      border-top: 2px solid #f0f0f0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      margin-top: 8px;
+      border-top: 1px solid #e5e7eb;
     }
     
-    .admin-card-actions .btn,
-    .admin-card-actions button {
-      font-size: 0.9em !important;
-      padding: 6px 12px !important;
-    }
-  }
-  
-  /* PC用テーブルレイアウト */
-  @media (min-width: 769px) {
-    .admin-table {
-      display: table;
-    }
-    
-    .admin-cards {
+    .admin-table td.admin-actions::before {
       display: none;
+    }
+    
+    .admin-table .btn.small {
+      display: inline-block;
+      margin: 4px 4px 4px 0;
+      font-size: 0.9em;
+      padding: 8px 12px;
+    }
+    
+    .admin-table td.admin-actions form {
+      display: inline-block;
     }
   }
 </style>
 
-<h1>管理者一覧</h1>
+<div style="margin-bottom:20px">
+  <div style="font-size:1.2em;font-weight:bold;color:#666">{{ tenant.名称 if tenant else 'テナント名' }}</div>
+  {% if store %}
+  <div style="font-size:1.1em;font-weight:bold;color:#888;margin-top:4px">{{ store.名称 }}</div>
+  {% endif %}
+  <h1 style="margin-top:12px">店舗管理者一覧</h1>
+</div>
 
 <div style="margin-bottom:20px">
+  {% if is_owner or can_manage_admins %}
   <a class="btn" href="{{ url_for('admin.admin_new') }}">新規作成</a>
+  <a class="btn" href="{{ url_for('admin.admin_invite') }}">管理者を招待</a>
+  {% endif %}
   <a class="btn sub" href="{{ url_for('admin.dashboard') }}">戻る</a>
 </div>
 
+<!-- 検索フィールド -->
 {% if admins %}
-<!-- PC用テーブル表示 -->
-<table class="admin-table" style="width:100%;border-collapse:collapse;font-size:0.85em">
-  <thead>
-    <tr style="background:#f5f5f5;border-bottom:2px solid #ddd">
-      <th style="padding:8px;text-align:left;white-space:nowrap">ID</th>
-      <th style="padding:8px;text-align:left;white-space:nowrap">ログインID</th>
-      <th style="padding:8px;text-align:left;white-space:nowrap">氏名</th>
-      <th style="padding:8px;text-align:left;white-space:nowrap">オーナー</th>
-      <th style="padding:8px;text-align:left;white-space:nowrap">管理権限</th>
-      <th style="padding:8px;text-align:left;white-space:nowrap">有効</th>
-      <th style="padding:8px;text-align:left;white-space:nowrap">作成日時</th>
-      <th style="padding:8px;text-align:left;white-space:nowrap">操作</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for admin in admins %}
-    <tr style="border-bottom:1px solid #eee{% if admin.is_owner == 1 %};background:#fffbf0{% endif %}">
-      <td style="padding:8px;white-space:nowrap">{{ admin.id }}</td>
-      <td style="padding:8px;white-space:nowrap"><code>{{ admin.login_id }}</code></td>
-      <td style="padding:8px;white-space:nowrap"><strong>{{ admin.name }}</strong></td>
-      <td style="padding:8px;white-space:nowrap">
-        {% if admin.is_owner == 1 %}
-          <span style="color:#ff6f00;font-weight:bold">★ オーナー</span>
-        {% else %}
-          <span style="color:#999">-</span>
-        {% endif %}
-      </td>
-      <td style="padding:8px;white-space:nowrap">
-        {% if admin.is_owner == 1 %}
-          <span style="color:#999">（常に有）</span>
-        {% elif admin.can_manage_admins == 1 %}
-          <span style="color:green;font-weight:bold">✓ 有</span>
-        {% else %}
-          <span style="color:#999">無</span>
-        {% endif %}
-      </td>
-      <td style="padding:8px;white-space:nowrap">
-        {% if admin.active == 1 %}
-          <span style="color:green">✓ 有効</span>
-        {% else %}
-          <span style="color:#999">無効</span>
-        {% endif %}
-      </td>
-      <td style="padding:8px;white-space:nowrap;color:#666">{{ admin.created_at }}</td>
-      <td style="padding:8px;white-space:nowrap">
-        {% if admin.id == current_user_id %}
-          <span style="color:#999">（自分）</span>
-        {% elif is_system_admin or is_tenant_admin %}
-          {# システム管理者・テナント管理者は全ての店舗管理者を編集可能 #}
-          <a class="btn small" href="{{ url_for('admin.admin_edit', admin_id=admin.id) }}" style="font-size:0.9em;padding:4px 8px">編集</a>
-          
-          {% if admin.is_owner != 1 %}
-          <form method="post" action="{{ url_for('admin.toggle_admin_manage_permission', admin_id=admin.id) }}" style="display:inline">
-            {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-            <button class="btn small" type="submit" style="background:{% if admin.can_manage_admins == 1 %}#999{% else %}#4caf50{% endif %};font-size:0.9em;padding:4px 8px">
-              {% if admin.can_manage_admins == 1 %}権限剥奪{% else %}権限付与{% endif %}
-            </button>
-          </form>
-          
-          <form method="post" action="{{ url_for('admin.admin_transfer_owner', admin_id=admin.id) }}" style="display:inline" onsubmit="return confirm('{{ admin.name }} にオーナー権限を移譲しますか？');">
-            {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-            <button class="btn small" type="submit" style="background:#ff6f00;font-size:0.9em;padding:4px 8px">オーナー移譲</button>
-          </form>
-          
-          <form method="post" action="{{ url_for('admin.admin_delete', admin_id=admin.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？');">
-            {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-            <button class="btn small" type="submit" style="background:#d32f2f;font-size:0.9em;padding:4px 8px">削除</button>
-          </form>
-          {% endif %}
-        {% elif admin.is_owner != 1 %}
-          {# 店舗管理者はオーナー以外を編集可能 #}
-          <a class="btn small" href="{{ url_for('admin.admin_edit', admin_id=admin.id) }}" style="font-size:0.9em;padding:4px 8px">編集</a>
-          
-          {% if is_owner %}
-          <form method="post" action="{{ url_for('admin.toggle_admin_manage_permission', admin_id=admin.id) }}" style="display:inline">
-            {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-            <button class="btn small" type="submit" style="background:{% if admin.can_manage_admins == 1 %}#999{% else %}#4caf50{% endif %};font-size:0.9em;padding:4px 8px">
-              {% if admin.can_manage_admins == 1 %}権限剥奪{% else %}権限付与{% endif %}
-            </button>
-          </form>
-          
-          <form method="post" action="{{ url_for('admin.admin_transfer_owner', admin_id=admin.id) }}" style="display:inline" onsubmit="return confirm('この管理者にオーナー権限を移譲しますか？移譲後はあなたはオーナーではなくなります。');">
-            {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-            <button class="btn small" type="submit" style="background:#ff6f00;font-size:0.9em;padding:4px 8px">オーナー移譲</button>
-          </form>
-          
-          <form method="post" action="{{ url_for('admin.admin_delete', admin_id=admin.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？');">
-            {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-            <button class="btn small" type="submit" style="background:#d32f2f;font-size:0.9em;padding:4px 8px">削除</button>
-          </form>
-          {% endif %}
-        {% else %}
-          <span style="color:#999">オーナーは編集のみ可能</span>
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div style="margin-bottom:20px">
+  <input type="text" id="searchInput" placeholder="ログインIDまたは氏名で検索..." 
+         style="width:100%;max-width:400px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:16px">
+  <span id="searchResult" style="margin-left:10px;color:#666"></span>
+</div>
+{% endif %}
 
-<!-- スマホ用カード表示 -->
-<div class="admin-cards">
-  {% for admin in admins %}
-  <div class="admin-card{% if admin.is_owner == 1 %} owner{% endif %}">
-    <div class="admin-card-row">
-      <span class="admin-card-label">ID:</span>
-      <span class="admin-card-value">{{ admin.id }}</span>
-    </div>
-    <div class="admin-card-row">
-      <span class="admin-card-label">ログインID:</span>
-      <span class="admin-card-value"><code>{{ admin.login_id }}</code></span>
-    </div>
-    <div class="admin-card-row">
-      <span class="admin-card-label">氏名:</span>
-      <span class="admin-card-value"><strong>{{ admin.name }}</strong></span>
-    </div>
-    <div class="admin-card-row">
-      <span class="admin-card-label">オーナー:</span>
-      <span class="admin-card-value">
-        {% if admin.is_owner == 1 %}
-          <span style="color:#ff6f00;font-weight:bold">★ オーナー</span>
-        {% else %}
-          <span style="color:#999">-</span>
-        {% endif %}
-      </span>
-    </div>
-    <div class="admin-card-row">
-      <span class="admin-card-label">管理権限:</span>
-      <span class="admin-card-value">
-        {% if admin.is_owner == 1 %}
-          <span style="color:#999">（常に有）</span>
-        {% elif admin.can_manage_admins == 1 %}
-          <span style="color:green;font-weight:bold">✓ 有</span>
-        {% else %}
-          <span style="color:#999">無</span>
-        {% endif %}
-      </span>
-    </div>
-    <div class="admin-card-row">
-      <span class="admin-card-label">有効:</span>
-      <span class="admin-card-value">
-        {% if admin.active == 1 %}
-          <span style="color:green">✓ 有効</span>
-        {% else %}
-          <span style="color:#999">無効</span>
-        {% endif %}
-      </span>
-    </div>
-    <div class="admin-card-row">
-      <span class="admin-card-label">作成日時:</span>
-      <span class="admin-card-value" style="color:#666">{{ admin.created_at }}</span>
-    </div>
-    
-    <div class="admin-card-actions">
-      {% if admin.id == current_user_id %}
-        <span style="color:#999">（自分）</span>
-      {% elif is_system_admin or is_tenant_admin %}
-        {# システム管理者・テナント管理者は全ての店舗管理者を編集可能 #}
-        <a class="btn small" href="{{ url_for('admin.admin_edit', admin_id=admin.id) }}">編集</a>
-        
-        {% if admin.is_owner != 1 %}
-        <form method="post" action="{{ url_for('admin.toggle_admin_manage_permission', admin_id=admin.id) }}" style="display:inline">
-          {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-          <button class="btn small" type="submit" style="background:{% if admin.can_manage_admins == 1 %}#999{% else %}#4caf50{% endif %}">
-            {% if admin.can_manage_admins == 1 %}権限剥奪{% else %}権限付与{% endif %}
-          </button>
-        </form>
-        
-        <form method="post" action="{{ url_for('admin.admin_transfer_owner', admin_id=admin.id) }}" style="display:inline" onsubmit="return confirm('{{ admin.name }} にオーナー権限を移譲しますか？');">
-          {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-          <button class="btn small" type="submit" style="background:#ff6f00">オーナー移譲</button>
-        </form>
-        
-        <form method="post" action="{{ url_for('admin.admin_delete', admin_id=admin.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？');">
-          {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-          <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
-        </form>
-        {% endif %}
-      {% elif admin.is_owner != 1 %}
-        {# 店舗管理者はオーナー以外を編集可能 #}
-        <a class="btn small" href="{{ url_for('admin.admin_edit', admin_id=admin.id) }}">編集</a>
-        
-        {% if is_owner %}
-        <form method="post" action="{{ url_for('admin.toggle_admin_manage_permission', admin_id=admin.id) }}" style="display:inline">
-          {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-          <button class="btn small" type="submit" style="background:{% if admin.can_manage_admins == 1 %}#999{% else %}#4caf50{% endif %}">
-            {% if admin.can_manage_admins == 1 %}権限剥奪{% else %}権限付与{% endif %}
-          </button>
-        </form>
-        
-        <form method="post" action="{{ url_for('admin.admin_transfer_owner', admin_id=admin.id) }}" style="display:inline" onsubmit="return confirm('この管理者にオーナー権限を移譲しますか？移譲後はあなたはオーナーではなくなります。');">
-          {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-          <button class="btn small" type="submit" style="background:#ff6f00">オーナー移譲</button>
-        </form>
-        
-        <form method="post" action="{{ url_for('admin.admin_delete', admin_id=admin.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？');">
-          {% if get_csrf %}<input type="hidden" name="csrf_token" value="{{ get_csrf() }}">{% endif %}
-          <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
-        </form>
-        {% endif %}
-      {% else %}
-        <span style="color:#999">オーナーは編集のみ可能</span>
-      {% endif %}
-    </div>
-  </div>
-  {% endfor %}
+{% if admins %}
+<div class="admin-table-wrapper">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>ログインID</th>
+        <th>氏名</th>
+        <th>メールアドレス</th>
+        <th>所属店舗</th>
+        <th>管理権限</th>
+        <th>有効</th>
+        <th>作成日時</th>
+        <th>更新日時</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in admins %}
+      <tr class="admin-row {% if a.is_owner == 1 %}owner-row{% endif %}" 
+          data-login-id="{{ a.login_id }}" 
+          data-name="{{ a.name }}">
+        <td data-label="ID: ">{{ a.id }}</td>
+        <td data-label="ログインID: "><code>{{ a.login_id }}</code></td>
+        <td data-label="氏名: "><strong>{{ a.name }}</strong></td>
+        <td data-label="メールアドレス: ">{{ a.email if a.email else '-' }}</td>
+        <td data-label="所属店舗: ">
+          {% if a.stores %}
+            {% for store in a.stores %}
+              <span style="display:block">
+                {{ store.name }}
+                {% if store.is_owner %}
+                  <span style="color:#ff9800;font-weight:bold;margin-left:4px">★ オーナー</span>
+                {% endif %}
+              </span>
+            {% endfor %}
+          {% else %}
+            <span style="color:#999">未設定</span>
+          {% endif %}
+        </td>
+        <td data-label="管理権限: ">
+          {% if a.is_owner == 1 %}
+            <span style="color:green;font-weight:bold">✓ 有（常に有）</span>
+          {% elif a.can_manage_admins == 1 %}
+            <span style="color:green;font-weight:bold">✓ 有</span>
+          {% else %}
+            <span style="color:#999">無</span>
+          {% endif %}
+        </td>
+        <td data-label="有効: ">
+          {% if a.is_owner == 1 %}
+            <span style="color:#4caf50;font-weight:bold">✓ 有効（常に有効）</span>
+          {% elif a.active == 1 %}
+            <span style="color:#4caf50;font-weight:bold">✓ 有効</span>
+          {% else %}
+            <span style="color:#999">無効</span>
+          {% endif %}
+        </td>
+        <td data-label="作成日時: " style="color:#666">{{ a.created_at }}</td>
+        <td data-label="更新日時: " style="color:#666">{{ a.updated_at if a.updated_at else '-' }}</td>
+        <td class="admin-actions">
+          {% if a.id == current_user_id %}
+            <span style="color:#999">（自分）</span>
+          {% elif is_owner or can_manage_admins %}
+            <a class="btn small" href="{{ url_for('admin.admin_edit', admin_id=a.id) }}">編集</a>
+            
+            {% if a.is_owner != 1 %}
+            <form method="post" action="{{ url_for('admin.admin_delete', admin_id=a.id) }}" style="display:inline" onsubmit="return confirm('本当に削除しますか？')">
+              <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
+            </form>
+            
+            <form method="post" action="{{ url_for('admin.admin_toggle_active', admin_id=a.id) }}" style="display:inline">
+              {% if a.active == 1 %}
+                <button class="btn small" type="submit" style="background:#ff9800;color:white">無効化</button>
+              {% else %}
+                <button class="btn small" type="submit" style="background:#4caf50;color:white">有効化</button>
+              {% endif %}
+            </form>
+            
+            <form method="post" action="{{ url_for('admin.admin_toggle_permission', admin_id=a.id) }}" style="display:inline">
+              {% if a.can_manage_admins == 1 %}
+                <button class="btn small" type="submit" style="background:#999">権限剥奪</button>
+              {% else %}
+                <button class="btn small" type="submit" style="background:#4caf50">権限付与</button>
+              {% endif %}
+            </form>
+            
+            <form method="post" action="{{ url_for('admin.admin_transfer_owner', admin_id=a.id) }}" style="display:inline" onsubmit="return confirm('オーナー権限を移譲しますか？')">
+              <button class="btn small" type="submit" style="background:#ff6f00;color:white">オーナー移譲</button>
+            </form>
+            {% endif %}
+          {% else %}
+            <span style="color:#999">-</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% else %}
-<div class="card" style="text-align:center;padding:40px">
-  <p style="color:#999">管理者が登録されていません。</p>
-  <a class="btn" href="{{ url_for('admin.admin_new') }}">最初の管理者を作成</a>
-</div>
+<p style="color:#666">管理者が登録されていません。</p>
 {% endif %}
 
-{% if get_flashed_messages() %}
-<div style="margin-top:20px">
-  {% for category, message in get_flashed_messages(with_categories=true) %}
-    <div class="alert alert-{{ category }}" style="padding:12px;margin-bottom:8px;border-radius:4px;
-         {% if category == 'success' %}background:#d4edda;color:#155724;border:1px solid #c3e6cb{% endif %}
-         {% if category == 'error' %}background:#f8d7da;color:#721c24;border:1px solid #f5c6cb{% endif %}">
-      {{ message }}
-    </div>
-  {% endfor %}
-</div>
-{% endif %}
+<script>
+// 検索機能
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchInput');
+  const searchResult = document.getElementById('searchResult');
+  const adminRows = document.querySelectorAll('.admin-row');
+  
+  if (searchInput) {
+    function performSearch() {
+      const query = searchInput.value.toLowerCase().trim();
+      let visibleCount = 0;
+      
+      // 行を検索
+      adminRows.forEach(function(row) {
+        const loginId = row.dataset.loginId.toLowerCase();
+        const name = row.dataset.name.toLowerCase();
+        
+        if (query === '' || loginId.includes(query) || name.includes(query)) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+      
+      // 検索結果を表示
+      if (query === '') {
+        searchResult.textContent = '';
+      } else {
+        const totalCount = adminRows.length;
+        searchResult.textContent = visibleCount + ' / ' + totalCount + ' 件表示中';
+      }
+    }
+    
+    // 入力イベントをリスン
+    searchInput.addEventListener('input', performSearch);
+    searchInput.addEventListener('keyup', performSearch);
+  }
+});
+</script>
 {% endblock %}

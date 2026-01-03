@@ -2,9 +2,8 @@ import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-# .env ファイルから環境変数を読み込む
+# .envファイルから環境変数を読み込む
 load_dotenv()
-
 
 @dataclass
 class Settings:
@@ -13,7 +12,5 @@ class Settings:
     ENV: str = os.getenv("ENV", "dev")
     VERSION: str = os.getenv("APP_VERSION", "0.1.0")
     TZ: str = os.getenv("TZ", "Asia/Tokyo")
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
-
 
 settings = Settings()

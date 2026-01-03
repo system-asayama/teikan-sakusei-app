@@ -41,6 +41,28 @@
            placeholder="もう一度入力"
            autocomplete="new-password">
 
+    <div style="margin-top:24px;padding:16px;background:#f9f9f9;border-radius:8px">
+      <label style="display:flex;align-items:center;cursor:pointer;margin:0">
+        <input name="active" type="checkbox" value="1" checked
+               style="width:auto;margin-right:8px">
+        <span style="font-weight:normal">有効</span>
+      </label>
+      <div class="small" style="color:#666;margin-top:4px;margin-left:28px">
+        チェックを外すとこのシステム管理者は無効化されます。
+      </div>
+    </div>
+
+    <div style="margin-top:16px;padding:16px;background:#f9f9f9;border-radius:8px">
+      <label style="display:flex;align-items:center;cursor:pointer;margin:0">
+        <input name="can_manage_admins" type="checkbox" value="1"
+               style="width:auto;margin-right:8px">
+        <span style="font-weight:normal">管理者管理権限</span>
+      </label>
+      <div class="small" style="color:#666;margin-top:4px;margin-left:28px">
+        チェックを入れるとこのシステム管理者は他のシステム管理者を管理できるようになります。
+      </div>
+    </div>
+
     <div style="margin-top:24px;display:flex;gap:8px">
       <button class="btn" type="submit">作成する</button>
       <a class="btn sub" href="{{ url_for('system_admin.system_admins') }}">キャンセル</a>

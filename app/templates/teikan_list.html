@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>定款一覧</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .empty-message {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 定款一覧</h1>
+    
+    {% if teikan_list %}
+        <ul>
+        {% for teikan in teikan_list %}
+            <li>{{ teikan.name }}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <div class="empty-message">
+            <p>まだ定款が作成されていません。</p>
+        </div>
+    {% endif %}
+    
+    <div style="margin-top: 30px;">
+        <a href="{{ url_for('teikan.index') }}">戻る</a>
+    </div>
+</body>
+</html>

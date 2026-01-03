@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>定款作成アプリ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 5px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>📜 定款作成アプリ</h1>
+    <p>会社の定款を作成・管理するアプリケーションです。</p>
+    
+    <div>
+        <a href="{{ url_for('teikan.create') }}" class="button">新しい定款を作成</a>
+        <a href="{{ url_for('teikan.list') }}" class="button">定款一覧</a>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <a href="{{ mypage_url }}">マイページに戻る</a>
+    </div>
+</body>
+</html>

@@ -1,58 +1,246 @@
 {% extends "base.html" %}
 {% block title %}テナント管理者一覧{% endblock %}
 {% block content %}
-<h2>テナント管理者（{{ tenant.名称 }} / {{ tenant.slug }}）</h2>
+<style>
+  .admin-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+  
+  .admin-table thead tr {
+    background: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+  }
+  
+  .admin-table th {
+    padding: 8px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  
+  .admin-table tbody tr {
+    border-bottom: 1px solid #eee;
+  }
+  
+  .admin-table tbody tr.owner-row {
+    background: #fffbf0;
+  }
+  
+  .admin-table td {
+    padding: 8px;
+    white-space: nowrap;
+  }
+  
+  .admin-table .btn.small {
+    font-size: 0.9em;
+    padding: 4px 8px;
+  }
+  
+  /* スマホ用カード型レイアウト */
+  @media (max-width: 768px) {
+    .admin-table-wrapper {
+      overflow-x: visible;
+    }
+    
+    .admin-table thead {
+      display: none;
+    }
+    
+    .admin-table tbody {
+      display: block;
+    }
+    
+    .admin-table tbody tr {
+      display: block;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    
+    .admin-table tbody tr.owner-row {
+      background: #fffbf0;
+      border-color: #ffd700;
+    }
+    
+    .admin-table td {
+      display: block;
+      padding: 8px 0;
+      white-space: normal;
+      border: none;
+    }
+    
+    .admin-table td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      display: inline-block;
+      width: 100px;
+      color: #374151;
+    }
+    
+    .admin-table td.admin-actions {
+      padding-top: 12px;
+      margin-top: 8px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .admin-table td.admin-actions::before {
+      display: none;
+    }
+    
+    .admin-table .btn.small {
+      display: inline-block;
+      margin: 4px 4px 4px 0;
+      font-size: 0.9em;
+      padding: 8px 12px;
+    }
+    
+    .admin-table td.admin-actions form {
+      display: inline-block;
+    }
+    
+    .admin-table td[data-label="所属テナント: "] {
+      position: relative;
+    }
+    
+    .admin-table td[data-label="所属テナント: "]::before {
+      display: inline-block;
+      position: absolute;
+      left: 0;
+    }
+    
+    .admin-table td[data-label="所属テナント: "] span {
+      margin-left: 100px;
+    }
+    
+    .admin-table td[data-label="所属テナント: "] span:first-child {
+      display: inline !important;
+    }
+  }
+</style>
 
 <div style="margin-bottom:20px">
-  <a class="btn" href="{{ url_for('system_admin.tenant_admin_new', tid=tenant.id) }}">+ 新しい管理者を追加</a>
-  <a class="btn sub" href="{{ url_for('system_admin.tenants') }}">テナント一覧に戻る</a>
+  <div style="font-size:1.2em;font-weight:bold;color:#666">{{ tenant.名称 if tenant else 'テナント名' }}</div>
+  <h1 style="margin-top:12px">テナント管理者一覧</h1>
+</div>
+
+<div style="margin-bottom:20px">
+  <a class="btn" href="{{ url_for('system_admin.tenant_admin_new', tid=tenant.id) }}">新規作成</a>
+  <a class="btn" href="{{ url_for('system_admin.tenant_admin_invite', tid=tenant.id) }}">管理者を招待</a>
+  <a class="btn sub" href="{{ url_for('system_admin.tenants') }}">戻る</a>
+</div>
+
+<!-- 検索フィールド -->
+<div style="margin-bottom:20px">
+  <input type="text" id="searchInput" placeholder="ログインIDまたは氏名で検索..." 
+         style="width:100%;max-width:400px;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:16px">
+  <span id="searchResult" style="margin-left:10px;color:#666"></span>
 </div>
 
 {% if admins %}
-<table style="width:100%;border-collapse:collapse">
-  <thead>
-    <tr style="background:#f5f5f5;border-bottom:2px solid #ddd">
-      <th style="padding:12px;text-align:left">ID</th>
-      <th style="padding:12px;text-align:left">ログインID</th>
-      <th style="padding:12px;text-align:left">氏名</th>
-      <th style="padding:12px;text-align:left">有効</th>
-      <th style="padding:12px;text-align:left">操作</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for a in admins %}
-    <tr style="border-bottom:1px solid #eee">
-      <td style="padding:12px">{{ a.id }}</td>
-      <td style="padding:12px"><code>{{ a.login_id }}</code></td>
-      <td style="padding:12px"><strong>{{ a.name }}</strong></td>
-      <td style="padding:12px">
-        {% if a.active == 1 %}
-          <span style="color:green">✓ 有効</span>
-        {% else %}
-          <span style="color:#999">無効</span>
-        {% endif %}
-      </td>
-      <td style="padding:12px">
-        <div style="display:flex;gap:8px">
+<div class="admin-table-wrapper">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>ログインID</th>
+        <th>氏名</th>
+        <th>メールアドレス</th>
+        <th>所属テナント</th>
+        <th>管理権限</th>
+        <th>有効</th>
+        <th>作成日時</th>
+        <th>更新日時</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in admins %}
+      <tr class="admin-row{% if a.is_owner == 1 %} owner-row{% endif %}" data-login-id="{{ a.login_id }}" data-name="{{ a.name }}">
+        <td data-label="ID: ">{{ a.id }}</td>
+        <td data-label="ログインID: "><code>{{ a.login_id }}</code></td>
+        <td data-label="氏名: "><strong>{{ a.name }}</strong></td>
+        <td data-label="メールアドレス: ">{{ a.email if a.email else '-' }}</td>
+        <td data-label="所属テナント: ">
+          {% if a.tenants %}
+            {% for tenant in a.tenants %}
+              <span style="display:block">
+                {{ tenant.name }}
+                {% if tenant.is_owner %}
+                  <span style="color:#ff9800;font-weight:bold;margin-left:4px">★ オーナー</span>
+                {% endif %}
+              </span>
+            {% endfor %}
+          {% else %}
+            <span style="color:#999">-</span>
+          {% endif %}
+        </td>
+        <td data-label="管理権限: ">
+          {% if a.is_owner == 1 %}
+            <span style="color:green;font-weight:bold">✓ 有（常に有）</span>
+          {% elif a.can_manage_admins == 1 %}
+            <span style="color:green;font-weight:bold">✓ 有</span>
+          {% else %}
+            <span style="color:#999">無</span>
+          {% endif %}
+        </td>
+        <td data-label="有効: ">
+          {% if a.is_owner == 1 %}
+            <span style="color:#4caf50;font-weight:bold">✓ 有効（常に有効）</span>
+          {% elif a.active == 1 %}
+            <span style="color:#4caf50;font-weight:bold">✓ 有効</span>
+          {% else %}
+            <span style="color:#999">無効</span>
+          {% endif %}
+        </td>
+        <td data-label="作成日時: " style="color:#666">{{ a.created_at.strftime('%Y-%m-%d %H:%M:%S') if a.created_at else '-' }}</td>
+        <td data-label="更新日時: " style="color:#666">{{ a.updated_at.strftime('%Y-%m-%d %H:%M:%S') if a.updated_at else '-' }}</td>
+        <td class="admin-actions">
           <a class="btn small" href="{{ url_for('system_admin.tenant_admin_edit', tid=tenant.id, admin_id=a.id) }}">編集</a>
-          <form method="post" action="{{ url_for('system_admin.tenant_admin_toggle', tid=tenant.id, admin_id=a.id) }}" style="display:inline">
-            <button class="btn small secondary" type="submit">有効/無効切替</button>
-          </form>
+          
+          {% if a.is_owner != 1 %}
           <form method="post" action="{{ url_for('system_admin.tenant_admin_delete', tid=tenant.id, admin_id=a.id) }}" 
                 onsubmit="return confirm('本当に削除しますか？');" style="display:inline">
             <button class="btn small" type="submit" style="background:#d32f2f">削除</button>
           </form>
-        </div>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<div class="card" style="text-align:center;padding:40px">
-  <p style="color:#999">このテナントにはまだ管理者が作成されていません</p>
-  <a class="btn" href="{{ url_for('system_admin.tenant_admin_new', tid=tenant.id) }}">最初の管理者を作成</a>
+          
+          <form method="post" action="{{ url_for('system_admin.tenant_admin_toggle_active', tid=tenant.id, admin_id=a.id) }}" style="display:inline">
+            {% if a.active == 1 %}
+            <button class="btn small" type="submit" style="background:#ff9800">無効化</button>
+            {% else %}
+            <button class="btn small" type="submit" style="background:#4caf50">有効化</button>
+            {% endif %}
+          </form>
+          
+          <form method="post" action="{{ url_for('system_admin.tenant_admin_toggle', tid=tenant.id, admin_id=a.id) }}" style="display:inline">
+            {% if a.can_manage_admins == 1 %}
+            <button class="btn small" type="submit" style="background:#999">権限剥奪</button>
+            {% else %}
+            <button class="btn small" type="submit" style="background:#4caf50">権限付与</button>
+            {% endif %}
+          </form>
+          
+          <form method="post" action="{{ url_for('system_admin.tenant_admin_transfer_owner', tid=tenant.id, admin_id=a.id) }}" 
+                onsubmit="return confirm('この管理者にオーナー権限を移譲しますか？');" style="display:inline">
+            <button class="btn small" type="submit" style="background:#ff6f00">オーナー移譲</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
+{% else %}
+<p style="color:#666">このテナントにはまだ管理者が作成されていません。</p>
+<a class="btn" href="{{ url_for('system_admin.tenant_admin_new', tid=tenant.id) }}">最初の管理者を作成</a>
 {% endif %}
 
 {% if get_flashed_messages() %}
@@ -66,4 +254,43 @@
   {% endfor %}
 </div>
 {% endif %}
+
+<script>
+// 検索機能
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchInput');
+  const searchResult = document.getElementById('searchResult');
+  const adminRows = document.querySelectorAll('.admin-row');
+  
+  function performSearch() {
+    const query = searchInput.value.toLowerCase().trim();
+    let visibleCount = 0;
+    
+    // テーブル行を検索
+    adminRows.forEach(function(row) {
+      const loginId = row.dataset.loginId.toLowerCase();
+      const name = row.dataset.name.toLowerCase();
+      
+      if (query === '' || loginId.includes(query) || name.includes(query)) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+    
+    // 検索結果を表示
+    if (query === '') {
+      searchResult.textContent = '';
+    } else {
+      const totalCount = adminRows.length;
+      searchResult.textContent = visibleCount + ' / ' + totalCount + ' 件表示中';
+    }
+  }
+  
+  // 入力イベントをリスン
+  searchInput.addEventListener('input', performSearch);
+  searchInput.addEventListener('keyup', performSearch);
+});
+</script>
 {% endblock %}

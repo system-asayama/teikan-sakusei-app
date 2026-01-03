@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>定款作成</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            margin-top: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <h1>📝 定款作成</h1>
+    
+    <form method="POST">
+        <label for="company_name">会社名</label>
+        <input type="text" id="company_name" name="company_name" required>
+        
+        <label for="purpose">事業目的</label>
+        <textarea id="purpose" name="purpose" rows="5" required></textarea>
+        
+        <label for="capital">資本金</label>
+        <input type="text" id="capital" name="capital" required>
+        
+        <button type="submit">定款を作成</button>
+    </form>
+    
+    <div style="margin-top: 30px;">
+        <a href="{{ url_for('teikan.index') }}">戻る</a>
+    </div>
+</body>
+</html>

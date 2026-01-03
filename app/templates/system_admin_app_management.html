@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}アプリ管理 - システム管理者{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>アプリ管理</h1>
+    
+    <div class="card">
+        <h2>テナント・店舗別アプリ使用設定</h2>
+        <p>各テナントおよび店舗で使用可能なアプリケーションを管理します。</p>
+        
+        <div class="alert alert-info">
+            <strong>お知らせ:</strong> アプリ管理機能は現在開発中です。
+        </div>
+        
+        <a href="{{ url_for('system_admin.mypage') }}" class="btn btn-secondary">ダッシュボードに戻る</a>
+    </div>
+</div>
+{% endblock %}
