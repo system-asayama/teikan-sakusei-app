@@ -62,16 +62,19 @@ def init_database():
             stores = [
                 TTenpo(
                     名称='本店',
+                    slug='honten',
                     tenant_id=tenant.id,
                     有効=1
                 ),
                 TTenpo(
                     名称='支店A',
+                    slug='shiten-a',
                     tenant_id=tenant.id,
                     有効=1
                 ),
                 TTenpo(
                     名称='支店B',
+                    slug='shiten-b',
                     tenant_id=tenant.id,
                     有効=1
                 )
