@@ -142,7 +142,8 @@
   <p style="font-size:13px;color:#666;margin-bottom:16px;">全 {{ docs|length }} 件</p>
   {% for doc in docs %}
   <div class="history-card {% if doc.status == 'draft' %}is-draft{% endif %}">
-    <div class="history-card-title">
+    <a href="{{ url_for('teikan.history_edit', doc_id=doc.id) }}" style="text-decoration:none;color:inherit;display:block;">
+    <div class="history-card-title" style="cursor:pointer;">
       <span class="badge-type">{{ doc.company_type }}</span>
       {% if doc.status == 'draft' %}
         <span class="badge-draft">📝 下書き</span>
@@ -150,7 +151,9 @@
         <span class="badge-completed">✅ 完成</span>
       {% endif %}
       {{ doc.company_name if doc.company_name else '（未入力）' }}
+      <span style="float:right;color:#4A90E2;font-size:18px;">›</span>
     </div>
+    </a>
     <div class="history-card-meta">
       {% if doc.status == 'draft' %}
         下書き保存日時：
