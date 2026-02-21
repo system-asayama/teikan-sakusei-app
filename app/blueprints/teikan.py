@@ -151,6 +151,7 @@ def step2():
                 'contribution': request.form.get(f'contribution_{i}', '0'),
                 'postal_code': request.form.get(f'member_postal_{i}', ''),
                 'address': request.form.get(f'member_address_{i}', ''),
+                'phone': request.form.get(f'member_phone_{i}', ''),
             }
             if member['name']:
                 members.append(member)
