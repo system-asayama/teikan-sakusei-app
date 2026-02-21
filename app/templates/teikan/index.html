@@ -1,0 +1,61 @@
+{% extends 'teikan/base.html' %}
+
+{% block title %}定款作成アプリ{% endblock %}
+
+{% block content %}
+<div style="text-align:center;padding:40px 0 20px;">
+  <div style="font-size:56px;margin-bottom:16px;">📜</div>
+  <h1 style="font-size:24px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">定款作成アプリ</h1>
+  <p style="font-size:14px;color:#666;margin-bottom:32px;">
+    必要事項を入力するだけで、合同会社の定款を自動作成します。<br>
+    作成された定款はPDFでダウンロードできます。
+  </p>
+</div>
+
+<!-- ステップ説明 -->
+<div class="card" style="margin-bottom:12px;">
+  <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+    <div style="width:36px;height:36px;background:#e3f2fd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a6fc4;flex-shrink:0;">1</div>
+    <div>
+      <div style="font-weight:600;font-size:15px;">基本情報の入力</div>
+      <div style="font-size:13px;color:#888;">法人形態・商号・本店所在地</div>
+    </div>
+  </div>
+  <hr class="divider" style="margin:8px 0;">
+  <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+    <div style="width:36px;height:36px;background:#e3f2fd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a6fc4;flex-shrink:0;">2</div>
+    <div>
+      <div style="font-weight:600;font-size:15px;">社員・出資情報の入力</div>
+      <div style="font-size:13px;color:#888;">代表社員・出資金・資本金</div>
+    </div>
+  </div>
+  <hr class="divider" style="margin:8px 0;">
+  <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+    <div style="width:36px;height:36px;background:#e3f2fd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a6fc4;flex-shrink:0;">3</div>
+    <div>
+      <div style="font-weight:600;font-size:15px;">事業目的の設定</div>
+      <div style="font-size:13px;color:#888;">会社の事業内容を入力</div>
+    </div>
+  </div>
+  <hr class="divider" style="margin:8px 0;">
+  <div style="display:flex;align-items:center;gap:12px;padding:8px 0;">
+    <div style="width:36px;height:36px;background:#e3f2fd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a6fc4;flex-shrink:0;">4</div>
+    <div>
+      <div style="font-weight:600;font-size:15px;">決算期の設定</div>
+      <div style="font-size:13px;color:#888;">事業年度・設立日</div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:24px;">
+  <a href="{{ url_for('teikan.step1') }}" class="btn btn-primary" style="text-decoration:none;">
+    定款作成を始める →
+  </a>
+</div>
+
+<div style="margin-top:12px;text-align:center;">
+  <a href="{{ url_for('teikan.reset') }}" style="font-size:13px;color:#999;text-decoration:none;">
+    入力内容をリセットして最初から
+  </a>
+</div>
+{% endblock %}

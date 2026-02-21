@@ -136,7 +136,7 @@ def tenant_admin_login():
                 user_id, name, tenant_id, is_owner = row[0], row[1], row[3], row[4]
                 login_user(user_id, name, ROLES["TENANT_ADMIN"], tenant_id)
                 session['is_owner'] = (is_owner == 1)
-                return redirect(url_for('tenant_admin.mypage'))
+                return redirect(url_for('teikan.index'))
             else:
                 error = "ログインIDまたはパスワードが違います"
         finally:

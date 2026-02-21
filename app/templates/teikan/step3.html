@@ -1,0 +1,233 @@
+{% extends 'teikan/base.html' %}
+
+{% block title %}事業目的の設定 - 定款作成{% endblock %}
+
+{% block step_indicator %}
+<nav class="step-indicator">
+  <div class="step-indicator-inner">
+    <div class="step-item done">
+      <span class="step-num">✓</span>
+      <span>情報入力</span>
+    </div>
+    <div class="step-item done">
+      <span class="step-num">✓</span>
+      <span>社員情報</span>
+    </div>
+    <div class="step-item active">
+      <span class="step-num">3</span>
+      <span>事業目的</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">4</span>
+      <span>決算期</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">5</span>
+      <span>確認</span>
+    </div>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">事業の目的を設定しましょう</h1>
+<p class="section-subtitle">
+  会社が行う事業内容を入力します。許認可を取得する場合は、要件に必要な項目は必ず入力しましょう。
+</p>
+
+<div class="alert alert-info" style="margin-bottom:20px;">
+  <strong>ポイント：</strong>最後の項目「前（各）号に附帯関連する一切の事業」は自動的に追加されます。
+  将来、関連した業務を行う可能性を考慮し、幅広く記載することをおすすめします。
+</div>
+
+<form method="POST" action="{{ url_for('teikan.step3') }}" id="step3-form">
+  <input type="hidden" name="purpose_count" id="purpose_count" value="{{ data.get('purposes', [''])|length or 1 }}">
+
+  <!-- 業種選択（クイック入力） -->
+  <div class="card" style="margin-bottom:20px;">
+    <div style="font-weight:600;font-size:14px;margin-bottom:10px;">よく使われる事業目的から追加</div>
+    <div style="margin-bottom:8px;">
+      <select id="quick-industry" class="form-control" style="margin-bottom:8px;">
+        <option value="">業種を選択してください</option>
+        <option value="建設">建設・工事</option>
+        <option value="IT">IT・インターネット</option>
+        <option value="不動産">不動産</option>
+        <option value="飲食">飲食・フード</option>
+        <option value="小売">小売・EC</option>
+        <option value="製造">製造業</option>
+        <option value="コンサル">コンサルティング</option>
+        <option value="医療">医療・介護</option>
+        <option value="教育">教育・スクール</option>
+        <option value="美容">美容・ヘルス</option>
+      </select>
+    </div>
+    <div id="quick-suggestions" style="display:none;">
+      <div style="font-size:13px;color:#666;margin-bottom:8px;">クリックして追加：</div>
+      <div id="suggestion-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+  </div>
+
+  <!-- 事業目的リスト -->
+  <div id="purposes-container">
+    {% set purposes = data.get('purposes', ['']) %}
+    {% if not purposes %}{% set purposes = [''] %}{% endif %}
+    {% for purpose in purposes %}{% set i = loop.index0 %}
+    <div class="purpose-item" id="purpose-{{ i }}">
+      <div class="purpose-item-header">
+        <span class="purpose-num">事業目的{{ i + 1 }}</span>
+        {% if i > 0 %}
+        <button type="button" class="btn btn-danger" onclick="removePurpose({{ i }})">削除</button>
+        {% endif %}
+      </div>
+      <textarea name="purpose_{{ i }}" class="form-control" rows="2"
+        placeholder="例：建築・リフォーム・防犯工事 土木・造成工事の設計、施工及び管理">{{ purpose }}</textarea>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 自動追加される最後の項目 -->
+  <div class="purpose-item" style="background:#f0f6ff;border-color:#1a6fc4;">
+    <div class="purpose-item-header">
+      <span class="purpose-num" style="color:#1a6fc4;">最終項目（自動）</span>
+    </div>
+    <div style="font-size:14px;color:#1a6fc4;padding:4px 0;">前（各）号に附帯関連する一切の事業</div>
+    <p class="form-hint">この項目は自動的に追加されます</p>
+  </div>
+
+  <!-- 追加ボタン -->
+  <div style="text-align:center;margin:16px 0 24px;">
+    <button type="button" class="btn btn-outline-primary" onclick="addPurpose()" style="width:auto;padding:10px 24px;">
+      + 事業目的を追加
+    </button>
+  </div>
+
+  <!-- ナビゲーション -->
+  <div class="page-nav">
+    <a href="{{ url_for('teikan.step2') }}" class="btn btn-secondary" style="text-decoration:none;">← 戻る</a>
+    <button type="submit" class="btn btn-primary">次へ：決算期 →</button>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let purposeCount = {{ data.get('purposes', [''])|length or 1 }};
+
+const INDUSTRY_SUGGESTIONS = {
+  '建設': [
+    '建築・リフォーム・防犯工事 土木・造成工事の設計、施工及び管理',
+    '建物解体工事の施工及び管理',
+    '各種建設資材の設計、製作、施工及び販売',
+    '産業・一般廃棄物収集運搬、処理及び再生並びにその再生品の販売',
+  ],
+  'IT': [
+    'IT（情報技術）及びインターネットを利用した商業',
+    'ソフトウェアの企画、開発、販売及び保守',
+    'Webサイト・アプリケーションの企画、設計、開発及び運営',
+    'デジタルコンテンツの企画、制作及び販売',
+    'クラウドサービスの提供及び運営',
+  ],
+  '不動産': [
+    '不動産の売買、賃貸、仲介、斡旋及び管理業務',
+    '不動産の企画、開発及びコンサルティング業務',
+    '建物の管理及び維持業務',
+  ],
+  '飲食': [
+    '飲食店の経営及び管理',
+    '食料品・飲料の製造、加工及び販売',
+    'フードデリバリーサービスの提供',
+    'ケータリングサービスの提供',
+  ],
+  '小売': [
+    '衣類、アクセサリー類、雑貨品等の企画、製作、小売、卸売及び輸出入',
+    '美容用品、飲料水、健康補助食品等の販売',
+    '古物の売買、レンタル、輸出入及び受託販売',
+    'インターネットを利用した通信販売業務',
+  ],
+  '製造': [
+    '各種製品の企画、製造、加工及び販売',
+    '機械・設備の設計、製造及び販売',
+    '素材・部品の製造及び卸売',
+  ],
+  'コンサル': [
+    '経営コンサルティング及びマネジメントサービスの提供',
+    '人材育成・研修サービスの提供',
+    '財務・税務・法務に関するコンサルティング業務',
+    'マーケティング・広告・PR業務',
+  ],
+  '医療': [
+    '医療機器・医薬品の販売及び輸出入',
+    '介護サービスの提供及び介護施設の運営',
+    '健康管理・ウェルネスサービスの提供',
+  ],
+  '教育': [
+    '教育・研修サービスの提供及び学習塾の運営',
+    '教材・学習コンテンツの企画、制作及び販売',
+    'オンライン教育プラットフォームの開発及び運営',
+  ],
+  '美容': [
+    '美容院・エステサロンの経営及び管理',
+    '美容用品・化粧品の企画、製造及び販売',
+    'フィットネス・スポーツ施設の運営',
+  ],
+};
+
+document.getElementById('quick-industry').addEventListener('change', function() {
+  const industry = this.value;
+  const suggestionsDiv = document.getElementById('quick-suggestions');
+  const listDiv = document.getElementById('suggestion-list');
+
+  if (!industry || !INDUSTRY_SUGGESTIONS[industry]) {
+    suggestionsDiv.style.display = 'none';
+    return;
+  }
+
+  listDiv.innerHTML = '';
+  INDUSTRY_SUGGESTIONS[industry].forEach(text => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.style.cssText = 'padding:6px 12px;border:1.5px solid #1a6fc4;border-radius:20px;background:#f0f6ff;color:#1a6fc4;font-size:13px;cursor:pointer;';
+    btn.textContent = text.length > 25 ? text.substring(0, 25) + '...' : text;
+    btn.title = text;
+    btn.onclick = () => addPurposeWithText(text);
+    listDiv.appendChild(btn);
+  });
+
+  suggestionsDiv.style.display = 'block';
+});
+
+function addPurpose() {
+  addPurposeWithText('');
+}
+
+function addPurposeWithText(text) {
+  const i = purposeCount;
+  purposeCount++;
+  document.getElementById('purpose_count').value = purposeCount;
+
+  const container = document.getElementById('purposes-container');
+  const div = document.createElement('div');
+  div.className = 'purpose-item';
+  div.id = `purpose-${i}`;
+  div.innerHTML = `
+    <div class="purpose-item-header">
+      <span class="purpose-num">事業目的${i + 1}</span>
+      <button type="button" class="btn btn-danger" onclick="removePurpose(${i})">削除</button>
+    </div>
+    <textarea name="purpose_${i}" class="form-control" rows="2"
+      placeholder="事業目的を入力してください">${text}</textarea>
+  `;
+  container.appendChild(div);
+}
+
+function removePurpose(i) {
+  const el = document.getElementById(`purpose-${i}`);
+  if (el) {
+    el.remove();
+    purposeCount--;
+    document.getElementById('purpose_count').value = purposeCount;
+  }
+}
+</script>
+{% endblock %}

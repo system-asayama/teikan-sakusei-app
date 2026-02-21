@@ -1,0 +1,235 @@
+{% extends 'teikan/base.html' %}
+
+{% block title %}社員・出資情報の入力 - 定款作成{% endblock %}
+
+{% block step_indicator %}
+<nav class="step-indicator">
+  <div class="step-indicator-inner">
+    <div class="step-item done">
+      <span class="step-num">✓</span>
+      <span>情報入力</span>
+    </div>
+    <div class="step-item active">
+      <span class="step-num">2</span>
+      <span>社員情報</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">3</span>
+      <span>事業目的</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">4</span>
+      <span>決算期</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">5</span>
+      <span>確認</span>
+    </div>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">社員・出資情報を入力しましょう</h1>
+<p class="section-subtitle">代表社員の情報と出資金・資本金を設定します。</p>
+
+<form method="POST" action="{{ url_for('teikan.step2') }}" id="step2-form">
+  <input type="hidden" name="member_count" id="member_count" value="{{ data.get('members', [{}])|length or 1 }}">
+
+  <!-- 社員リスト -->
+  <div id="members-container">
+    {% set members = data.get('members', [{}]) %}
+    {% if not members %}{% set members = [{}] %}{% endif %}
+    {% for member in members %}{% set i = loop.index0 %}
+    <div class="member-card" id="member-{{ i }}">
+      <div class="member-card-header">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <span class="tag tag-blue" id="rep-badge-{{ i }}" style="{{ 'display:none' if not member.get('is_representative') and i > 0 else '' }}">代表社員</span>
+          <span class="tag tag-dark" id="contrib-badge-{{ i }}">出資金: <span id="contrib-display-{{ i }}">{{ member.get('contribution', '0') }}</span>円</span>
+        </div>
+        {% if i > 0 %}
+        <button type="button" class="btn btn-danger" onclick="removeMember({{ i }})">削除</button>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">氏名 <span class="required">必須</span></label>
+        <input type="text" name="member_name_{{ i }}" class="form-control"
+          placeholder="例：山崎 浩樹" value="{{ member.get('name', '') }}" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">氏名フリガナ <span class="optional">任意</span></label>
+        <input type="text" name="member_name_kana_{{ i }}" class="form-control"
+          placeholder="例：ヤマザキ ヒロキ" value="{{ member.get('name_kana', '') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">郵便番号 <span class="optional">任意</span></label>
+        <input type="text" name="member_postal_{{ i }}" class="form-control"
+          placeholder="例：709-2341" value="{{ member.get('postal_code', '') }}"
+          style="max-width:180px;"
+          oninput="lookupMemberPostal(this, {{ i }})">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">住所 <span class="required">必須</span></label>
+        <input type="text" name="member_address_{{ i }}" id="member-addr-{{ i }}" class="form-control"
+          placeholder="例：709-2341 岡山県加賀郡吉備中央町上加茂1684"
+          value="{{ member.get('address', '') }}" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">出資金額（円）<span class="required">必須</span></label>
+        <input type="number" name="contribution_{{ i }}" class="form-control"
+          placeholder="例：200000" value="{{ member.get('contribution', '') }}"
+          min="1" required
+          oninput="updateContribDisplay(this, {{ i }})">
+        <p class="form-hint">この社員が出資する金額を入力してください</p>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-item {% if member.get('is_representative') or i == 0 %}selected{% endif %}"
+          style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;">
+          <input type="checkbox" name="is_representative_{{ i }}"
+            {% if member.get('is_representative') or i == 0 %}checked{% endif %}
+            onchange="updateCheckbox(this)">
+          <div>
+            <div class="checkbox-label">代表社員にする</div>
+            <div class="checkbox-desc">この社員を会社の代表者として設定します</div>
+          </div>
+        </label>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- メンバー追加ボタン -->
+  <div style="text-align:center;margin-bottom:24px;">
+    <button type="button" class="btn btn-outline-primary" onclick="addMember()" style="width:auto;padding:10px 24px;">
+      + メンバーを追加
+    </button>
+  </div>
+
+  <hr class="divider">
+
+  <!-- 資本金 -->
+  <div class="form-group">
+    <label class="form-label" for="capital">資本金（円）<span class="required">必須</span></label>
+    <input type="number" id="capital" name="capital" class="form-control"
+      placeholder="例：200000" value="{{ data.get('capital', '') }}" min="1" required>
+    <p class="form-hint">通常、社員の出資金の合計と同額になります</p>
+  </div>
+
+  <!-- 連絡先電話番号 -->
+  <div class="form-group">
+    <label class="form-label" for="phone">連絡先電話番号 <span class="optional">任意</span></label>
+    <input type="tel" id="phone" name="phone" class="form-control"
+      placeholder="例：070-5357-1155" value="{{ data.get('phone', '') }}">
+  </div>
+
+  <!-- ナビゲーション -->
+  <div class="page-nav">
+    <a href="{{ url_for('teikan.step1') }}" class="btn btn-secondary" style="text-decoration:none;">← 戻る</a>
+    <button type="submit" class="btn btn-primary">次へ：事業目的 →</button>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let memberCount = {{ data.get('members', [{}])|length or 1 }};
+
+function updateCheckbox(input) {
+  const item = input.closest('.checkbox-item');
+  if (input.checked) {
+    item.classList.add('selected');
+  } else {
+    item.classList.remove('selected');
+  }
+}
+
+function updateContribDisplay(input, idx) {
+  const val = parseInt(input.value) || 0;
+  const display = document.getElementById(`contrib-display-${idx}`);
+  if (display) {
+    display.textContent = val.toLocaleString();
+  }
+}
+
+function addMember() {
+  const i = memberCount;
+  memberCount++;
+  document.getElementById('member_count').value = memberCount;
+
+  const container = document.getElementById('members-container');
+  const div = document.createElement('div');
+  div.className = 'member-card';
+  div.id = `member-${i}`;
+  div.innerHTML = `
+    <div class="member-card-header">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <span class="tag tag-dark">出資金: <span id="contrib-display-${i}">0</span>円</span>
+      </div>
+      <button type="button" class="btn btn-danger" onclick="removeMember(${i})">削除</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">氏名 <span class="required">必須</span></label>
+      <input type="text" name="member_name_${i}" class="form-control" placeholder="例：田中 太郎" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">氏名フリガナ <span class="optional">任意</span></label>
+      <input type="text" name="member_name_kana_${i}" class="form-control" placeholder="例：タナカ タロウ">
+    </div>
+    <div class="form-group">
+      <label class="form-label">郵便番号 <span class="optional">任意</span></label>
+      <input type="text" name="member_postal_${i}" class="form-control" placeholder="例：100-0001" style="max-width:180px;" oninput="lookupMemberPostal(this, ${i})">
+    </div>
+    <div class="form-group">
+      <label class="form-label">住所 <span class="required">必須</span></label>
+      <input type="text" name="member_address_${i}" id="member-addr-${i}" class="form-control" placeholder="例：東京都千代田区千代田1-1" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">出資金額（円）<span class="required">必須</span></label>
+      <input type="number" name="contribution_${i}" class="form-control" placeholder="例：100000" min="1" required oninput="updateContribDisplay(this, ${i})">
+    </div>
+    <div class="form-group">
+      <label class="checkbox-item" style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;">
+        <input type="checkbox" name="is_representative_${i}" onchange="updateCheckbox(this)">
+        <div>
+          <div class="checkbox-label">代表社員にする</div>
+          <div class="checkbox-desc">この社員を会社の代表者として設定します</div>
+        </div>
+      </label>
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function removeMember(i) {
+  const el = document.getElementById(`member-${i}`);
+  if (el) {
+    el.remove();
+    memberCount--;
+    document.getElementById('member_count').value = memberCount;
+  }
+}
+
+async function lookupMemberPostal(input, idx) {
+  const cleaned = input.value.replace(/[^0-9]/g, '');
+  if (cleaned.length === 7) {
+    try {
+      const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${cleaned}`);
+      const json = await res.json();
+      if (json.results && json.results[0]) {
+        const r = json.results[0];
+        const addr = r.address1 + r.address2 + r.address3;
+        const addrField = document.getElementById(`member-addr-${idx}`);
+        if (addrField) addrField.value = addr;
+      }
+    } catch(e) {}
+  }
+}
+</script>
+{% endblock %}

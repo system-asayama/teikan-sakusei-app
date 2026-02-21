@@ -1,0 +1,157 @@
+{% extends 'teikan/base.html' %}
+
+{% block title %}基本情報の入力 - 定款作成{% endblock %}
+
+{% block step_indicator %}
+<nav class="step-indicator">
+  <div class="step-indicator-inner">
+    <div class="step-item active">
+      <span class="step-num">1</span>
+      <span>情報入力</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">2</span>
+      <span>社員情報</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">3</span>
+      <span>事業目的</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">4</span>
+      <span>決算期</span>
+    </div>
+    <div class="step-item">
+      <span class="step-num">5</span>
+      <span>確認</span>
+    </div>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">基本情報を入力しましょう</h1>
+<p class="section-subtitle">法人形態・商号・本店所在地・登記方法を設定します。</p>
+
+<form method="POST" action="{{ url_for('teikan.step1') }}" id="step1-form">
+
+  <!-- 法人形態 -->
+  <div class="form-group">
+    <label class="form-label">法人形態 <span class="required">必須</span></label>
+    <div class="radio-group">
+      <label class="radio-item {% if data.get('company_type', '合同会社') == '合同会社' %}selected{% endif %}">
+        <input type="radio" name="company_type" value="合同会社"
+          {% if data.get('company_type', '合同会社') == '合同会社' %}checked{% endif %}
+          onchange="updateRadio(this)">
+        <div>
+          <div class="radio-label">合同会社（LLC）</div>
+          <div class="radio-desc">設立費用が安く、柔軟な経営が可能。スタートアップに人気</div>
+        </div>
+      </label>
+      <label class="radio-item {% if data.get('company_type') == '株式会社' %}selected{% endif %}">
+        <input type="radio" name="company_type" value="株式会社"
+          {% if data.get('company_type') == '株式会社' %}checked{% endif %}
+          onchange="updateRadio(this)">
+        <div>
+          <div class="radio-label">株式会社</div>
+          <div class="radio-desc">社会的信用度が高く、資金調達がしやすい</div>
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <!-- 商号 -->
+  <div class="form-group">
+    <label class="form-label" for="company_name">商号（会社名）<span class="required">必須</span></label>
+    <input type="text" id="company_name" name="company_name" class="form-control"
+      placeholder="例：megi" value="{{ data.get('company_name', '') }}" required>
+    <p class="form-hint">「合同会社」の文字は自動で付与されます。商号のみ入力してください。</p>
+  </div>
+
+  <!-- 商号（フリガナ） -->
+  <div class="form-group">
+    <label class="form-label" for="company_name_kana">商号フリガナ <span class="optional">任意</span></label>
+    <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
+      placeholder="例：メギ" value="{{ data.get('company_name_kana', '') }}">
+  </div>
+
+  <!-- 法務局への登記申請方法 -->
+  <div class="form-group">
+    <label class="form-label">法務局に登記申請する方法 <span class="required">必須</span></label>
+    <div class="radio-group">
+      <label class="radio-item {% if data.get('registration_method', '法務局に直接提出') == '法務局に直接提出' %}selected{% endif %}">
+        <input type="radio" name="registration_method" value="法務局に直接提出"
+          {% if data.get('registration_method', '法務局に直接提出') == '法務局に直接提出' %}checked{% endif %}
+          onchange="updateRadio(this)">
+        <div>
+          <div class="radio-label">法務局に直接提出</div>
+          <div class="radio-desc">書類を印刷して法務局の窓口に持参する</div>
+        </div>
+      </label>
+      <label class="radio-item {% if data.get('registration_method') == 'オンライン申請' %}selected{% endif %}">
+        <input type="radio" name="registration_method" value="オンライン申請"
+          {% if data.get('registration_method') == 'オンライン申請' %}checked{% endif %}
+          onchange="updateRadio(this)">
+        <div>
+          <div class="radio-label">オンライン申請（登記・供託オンライン申請システム）</div>
+          <div class="radio-desc">PCから電子申請する。電子証明書が必要</div>
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <!-- 本店所在地 -->
+  <div class="form-group">
+    <label class="form-label" for="postal_code">郵便番号 <span class="required">必須</span></label>
+    <input type="text" id="postal_code" name="postal_code" class="form-control"
+      placeholder="例：709-2341" value="{{ data.get('postal_code', '') }}"
+      style="max-width:180px;" oninput="lookupPostal(this.value)">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="address">本店所在地（都道府県〜番地）<span class="required">必須</span></label>
+    <input type="text" id="address" name="address" class="form-control"
+      placeholder="例：岡山県加賀郡吉備中央町上加茂1648" value="{{ data.get('address', '') }}" required>
+    <p class="form-hint">定款には「最小行政区画」（市区町村）のみ記載することも可能です</p>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="address_detail">建物名・部屋番号 <span class="optional">任意</span></label>
+    <input type="text" id="address_detail" name="address_detail" class="form-control"
+      placeholder="例：○○ビル3階" value="{{ data.get('address_detail', '') }}">
+  </div>
+
+  <!-- ナビゲーション -->
+  <div class="page-nav">
+    <a href="{{ url_for('teikan.index') }}" class="btn btn-secondary" style="text-decoration:none;">← 戻る</a>
+    <button type="submit" class="btn btn-primary">次へ：社員情報 →</button>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateRadio(input) {
+  document.querySelectorAll('.radio-item').forEach(item => {
+    item.classList.remove('selected');
+  });
+  input.closest('.radio-item').classList.add('selected');
+}
+
+async function lookupPostal(value) {
+  const cleaned = value.replace(/[^0-9]/g, '');
+  if (cleaned.length === 7) {
+    try {
+      const res = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${cleaned}`);
+      const json = await res.json();
+      if (json.results && json.results[0]) {
+        const r = json.results[0];
+        const addr = r.address1 + r.address2 + r.address3;
+        document.getElementById('address').value = addr;
+      }
+    } catch(e) {}
+  }
+}
+</script>
+{% endblock %}

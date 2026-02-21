@@ -1,0 +1,145 @@
+{% extends 'teikan/base.html' %}
+
+{% block title %}入力内容の確認 - 定款作成{% endblock %}
+
+{% block step_indicator %}
+<nav class="step-indicator">
+  <div class="step-indicator-inner">
+    <div class="step-item done">
+      <span class="step-num">✓</span>
+      <span>情報入力</span>
+    </div>
+    <div class="step-item done">
+      <span class="step-num">✓</span>
+      <span>社員情報</span>
+    </div>
+    <div class="step-item done">
+      <span class="step-num">✓</span>
+      <span>事業目的</span>
+    </div>
+    <div class="step-item done">
+      <span class="step-num">✓</span>
+      <span>決算期</span>
+    </div>
+    <div class="step-item active">
+      <span class="step-num">5</span>
+      <span>確認</span>
+    </div>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<h1 class="section-title">{{ data.get('company_type', '合同会社') }}{{ data.get('company_name', '') }}</h1>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;">
+  <span style="font-size:14px;color:#666;">✏️ 情報入力ステップ</span>
+</div>
+<p style="font-size:13px;color:#666;margin-bottom:20px;">入力内容をもとに定款が自動作成されます。内容を確認して「定款を作成する」ボタンを押してください。</p>
+
+<!-- 法人形態・商号 -->
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div class="card-label">法人形態/商号等</div>
+  <div class="card-val">{{ data.get('company_type', '合同会社') }}{{ data.get('company_name', '') }}</div>
+</div>
+
+<!-- 登記方法 -->
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div class="card-label">法務局に登記申請する方法</div>
+  <div class="card-val">{{ data.get('registration_method', '法務局に直接提出') }}</div>
+</div>
+
+<!-- 本店所在地 -->
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div class="card-label">法人の住所</div>
+  <div class="card-val">{{ data.get('address', '') }}{{ data.get('address_detail', '') }}</div>
+</div>
+
+<!-- 連絡先 -->
+{% if data.get('phone') %}
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div class="card-label">連絡先</div>
+  <div class="card-val">{{ data.get('phone', '') }}</div>
+</div>
+{% endif %}
+
+<!-- 社員情報 -->
+{% for member in data.get('members', []) %}
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+    {% if member.get('is_representative') %}
+    <span class="tag tag-blue">代表社員</span>
+    {% endif %}
+    <span class="tag tag-dark">出資金: {% if member.get('contribution') %}{{ '{:,}'.format(member.get('contribution', 0)|int) }}{% else %}0{% endif %}円</span>
+  </div>
+  <div class="card-val">{{ member.get('name', '') }}</div>
+  <div style="font-size:13px;color:#666;margin-top:4px;">住所</div>
+  <div style="font-size:15px;font-weight:600;color:#1a1a2e;">{{ member.get('address', '') }}</div>
+</div>
+{% endfor %}
+
+<!-- 資本金 -->
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div class="card-label">資本金</div>
+  <div class="card-val">{% if data.get('capital') %}{{ '{:,}'.format(data.get('capital', 0)|int) }}{% else %}0{% endif %}円</div>
+</div>
+
+<!-- 事業内容 -->
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div class="card-label">事業内容</div>
+  <ol style="margin:8px 0 0 16px;padding:0;">
+    {% for p in data.get('purposes', []) %}
+    <li style="font-size:14px;color:#333;margin-bottom:4px;">{{ p }}</li>
+    {% endfor %}
+  </ol>
+</div>
+
+<!-- 決算期 -->
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div class="card-label">決算期</div>
+  {% set sm = data.get('fiscal_start_month', '3') %}
+  {% set sd = data.get('fiscal_start_day', '1') %}
+  {% set em = data.get('fiscal_end_month', '2') %}
+  {% set ed = data.get('fiscal_end_day', '末日') %}
+  <div class="card-val">
+    {{ sm }}月{{ sd }}日〜翌年{{ em }}月{% if ed == '末日' %}末日{% else %}{{ ed }}日{% endif %}
+  </div>
+</div>
+
+<!-- 設立日 -->
+{% if data.get('established_date') %}
+<div class="checked-card">
+  <div class="check-badge">✓</div>
+  <div class="card-label">設立予定日</div>
+  <div class="card-val">{{ data.get('established_date', '') }}</div>
+</div>
+{% endif %}
+
+<!-- 修正リンク -->
+<div class="card" style="margin-top:8px;">
+  <div style="font-size:13px;color:#666;margin-bottom:10px;">内容を修正する場合はこちら</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;">
+    <a href="{{ url_for('teikan.step1') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;font-size:13px;padding:8px 14px;">基本情報を修正</a>
+    <a href="{{ url_for('teikan.step2') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;font-size:13px;padding:8px 14px;">社員情報を修正</a>
+    <a href="{{ url_for('teikan.step3') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;font-size:13px;padding:8px 14px;">事業目的を修正</a>
+    <a href="{{ url_for('teikan.step4') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;font-size:13px;padding:8px 14px;">決算期を修正</a>
+  </div>
+</div>
+
+<!-- アクションボタン -->
+<div style="margin-top:24px;">
+  <a href="{{ url_for('teikan.preview') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;">
+    📄 定款をプレビューする
+  </a>
+  <a href="{{ url_for('teikan.download_pdf') }}" class="btn btn-success" style="text-decoration:none;">
+    ⬇️ 定款PDFをダウンロード
+  </a>
+</div>
+{% endblock %}
