@@ -448,7 +448,7 @@ def history_edit(doc_id):
         save_session_data(data)
         session['teikan_draft_id'] = doc.id  # 編集中のドキュメントIDをセッションに保存
         session.modified = True
-        flash('定款データを読み込みました。内容を確認・編集してください', 'info')
+        flash('法人データを読み込みました', 'info')
         return redirect(url_for('teikan.new_setup'))
     finally:
         db.close()
