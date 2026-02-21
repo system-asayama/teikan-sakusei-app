@@ -24,6 +24,9 @@
   box-shadow: 0 2px 12px rgba(74,144,226,0.12);
   border-color: #4A90E2;
 }
+.history-card.is-draft {
+  border-left: 4px solid #f39c12;
+}
 .history-card-title {
   font-size: 18px;
   font-weight: 700;
@@ -95,6 +98,26 @@
   font-weight: 600;
   margin-right: 6px;
 }
+.badge-draft {
+  display: inline-block;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 6px;
+}
+.badge-completed {
+  display: inline-block;
+  background: #d4edda;
+  color: #155724;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 6px;
+}
 </style>
 
 <div class="history-header">
@@ -102,7 +125,7 @@
     <h1 class="section-title" style="margin-bottom:4px;">作成済み定款一覧</h1>
     <p style="font-size:13px;color:#888;margin:0;">保存した定款の確認・再ダウンロードができます</p>
   </div>
-  <a href="{{ url_for('teikan.step1') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:10px 20px;">
+  <a href="{{ url_for('teikan.confirm') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:10px 20px;">
     ＋ 新しい定款を作成
   </a>
 </div>
@@ -118,22 +141,38 @@
 {% if docs %}
   <p style="font-size:13px;color:#666;margin-bottom:16px;">全 {{ docs|length }} 件</p>
   {% for doc in docs %}
-  <div class="history-card">
+  <div class="history-card {% if doc.status == 'draft' %}is-draft{% endif %}">
     <div class="history-card-title">
-      <span class="badge-type">{{ doc.company_type }}</span>{{ doc.company_name }}
+      <span class="badge-type">{{ doc.company_type }}</span>
+      {% if doc.status == 'draft' %}
+        <span class="badge-draft">📝 下書き</span>
+      {% else %}
+        <span class="badge-completed">✅ 完成</span>
+      {% endif %}
+      {{ doc.company_name if doc.company_name else '（未入力）' }}
     </div>
     <div class="history-card-meta">
-      作成日時：{{ doc.created_at.strftime('%Y年%m月%d日 %H:%M') if doc.created_at else '不明' }}
+      {% if doc.status == 'draft' %}
+        下書き保存日時：
+      {% else %}
+        保存日時：
+      {% endif %}
+      {{ doc.created_at.strftime('%Y年%m月%d日 %H:%M') if doc.created_at else '不明' }}
+      {% if doc.updated_at and doc.updated_at != doc.created_at %}
+        ／ 最終更新：{{ doc.updated_at.strftime('%Y年%m月%d日 %H:%M') }}
+      {% endif %}
     </div>
     <div class="history-card-actions">
+      {% if doc.status != 'draft' %}
       <a href="{{ url_for('teikan.history_detail', doc_id=doc.id) }}" class="btn-sm btn-view">
         📄 プレビュー
       </a>
       <a href="{{ url_for('teikan.history_download', doc_id=doc.id) }}" class="btn-sm btn-dl">
         ⬇️ PDFダウンロード
       </a>
+      {% endif %}
       <a href="{{ url_for('teikan.history_edit', doc_id=doc.id) }}" class="btn-sm btn-edit">
-        ✏️ 編集
+        {% if doc.status == 'draft' %}✏️ 続きを編集{% else %}✏️ 編集{% endif %}
       </a>
       <form method="POST" action="{{ url_for('teikan.history_delete', doc_id=doc.id) }}"
             style="display:inline;"
@@ -147,7 +186,7 @@
   <div class="empty-state">
     <div class="empty-icon">📋</div>
     <p>まだ定款が保存されていません。</p>
-    <a href="{{ url_for('teikan.step1') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:12px 24px;">
+    <a href="{{ url_for('teikan.confirm') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:12px 24px;">
       最初の定款を作成する
     </a>
   </div>

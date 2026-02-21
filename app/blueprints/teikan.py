@@ -27,6 +27,54 @@ def save_session_data(data):
     session.modified = True
 
 
+def autosave_draft(data):
+    """各ステップ保存時に自動的にDBに下書き保存するヘルパー関数"""
+    tenant_id = session.get('tenant_id')
+    user_id = session.get('user_id')
+    draft_id = session.get('teikan_draft_id')  # 現在編集中の下書きID
+
+    db = SessionLocal()
+    try:
+        from app.db import Base, engine
+        Base.metadata.create_all(bind=engine)
+
+        company_name = data.get('company_name', '')
+        company_type = data.get('company_type', '合同会社')
+        data_json = json.dumps(data, ensure_ascii=False)
+
+        if draft_id:
+            # 既存の下書きを更新
+            doc = db.query(TeikanDocument).filter(
+                TeikanDocument.id == draft_id,
+                TeikanDocument.tenant_id == tenant_id
+            ).first()
+            if doc and doc.status == 'draft':
+                doc.company_name = company_name
+                doc.company_type = company_type
+                doc.data_json = data_json
+                db.commit()
+                return  # 更新成功
+
+        # 新規下書き作成
+        doc = TeikanDocument(
+            tenant_id=tenant_id,
+            created_by=user_id,
+            company_name=company_name,
+            company_type=company_type,
+            status='draft',
+            data_json=data_json
+        )
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+        session['teikan_draft_id'] = doc.id  # 下書きIDをセッションに保存
+        session.modified = True
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
+
+
 @bp.route('/')
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
 def index():
@@ -49,6 +97,7 @@ def step1():
         data['address'] = request.form.get('address', '')
         data['address_detail'] = request.form.get('address_detail', '')
         save_session_data(data)
+        autosave_draft(data)
         return redirect(url_for('teikan.confirm'))
 
     return render_template('teikan/step1.html', data=data)
@@ -79,6 +128,7 @@ def step2():
         data['capital'] = request.form.get('capital', '0')
         data['phone'] = request.form.get('phone', '')
         save_session_data(data)
+        autosave_draft(data)
         return redirect(url_for('teikan.confirm'))
 
     return render_template('teikan/step2.html', data=data)
@@ -103,6 +153,7 @@ def step3():
 
         data['purposes'] = purposes
         save_session_data(data)
+        autosave_draft(data)
         return redirect(url_for('teikan.confirm'))
 
     return render_template('teikan/step3.html', data=data)
@@ -121,6 +172,7 @@ def step4():
         data['fiscal_end_day'] = request.form.get('fiscal_end_day', '末日')
         data['established_date'] = request.form.get('established_date', '')
         save_session_data(data)
+        autosave_draft(data)
         return redirect(url_for('teikan.confirm'))
 
     return render_template('teikan/step4.html', data=data)
@@ -181,32 +233,56 @@ def reset():
 @bp.route('/save', methods=['POST'])
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
 def save():
-    """定款データをDBに保存する"""
+    """定款データをDBに完成保存する（下書きがあれば更新、なければ新規作成）"""
     data = get_session_data()
     if not data.get('company_name'):
         flash('最初から入力してください', 'warning')
-        return redirect(url_for('teikan.step1'))
+        return redirect(url_for('teikan.confirm'))
 
     tenant_id = session.get('tenant_id')
     user_id = session.get('user_id')
+    draft_id = session.get('teikan_draft_id')
     db = SessionLocal()
     try:
-        # テーブルが存在しない場合は作成
         from app.db import Base, engine
         Base.metadata.create_all(bind=engine)
 
+        company_name = data.get('company_name', '')
+        company_type = data.get('company_type', '合同会社')
+        data_json = json.dumps(data, ensure_ascii=False)
+
+        if draft_id:
+            # 既存の下書きを完成に更新
+            doc = db.query(TeikanDocument).filter(
+                TeikanDocument.id == draft_id,
+                TeikanDocument.tenant_id == tenant_id
+            ).first()
+            if doc:
+                doc.company_name = company_name
+                doc.company_type = company_type
+                doc.status = 'completed'
+                doc.data_json = data_json
+                db.commit()
+                flash(f'「{company_type}{company_name}」の定款を保存しました', 'success')
+                session.pop('teikan_data', None)
+                session.pop('teikan_draft_id', None)
+                return redirect(url_for('teikan.history'))
+
+        # 新規完成保存
         doc = TeikanDocument(
             tenant_id=tenant_id,
             created_by=user_id,
-            company_name=data.get('company_name', ''),
-            company_type=data.get('company_type', '合同会社'),
-            data_json=json.dumps(data, ensure_ascii=False)
+            company_name=company_name,
+            company_type=company_type,
+            status='completed',
+            data_json=data_json
         )
         db.add(doc)
         db.commit()
         db.refresh(doc)
         flash(f'「{doc.company_type}{doc.company_name}」の定款を保存しました', 'success')
         session.pop('teikan_data', None)
+        session.pop('teikan_draft_id', None)
         return redirect(url_for('teikan.history'))
     except Exception as e:
         db.rollback()
@@ -330,6 +406,8 @@ def history_edit(doc_id):
             return redirect(url_for('teikan.history'))
         data = json.loads(doc.data_json)
         save_session_data(data)
+        session['teikan_draft_id'] = doc.id  # 編集中のドキュメントIDをセッションに保存
+        session.modified = True
         flash('定款データを読み込みました。内容を確認・編集してください', 'info')
         return redirect(url_for('teikan.confirm'))
     finally:
