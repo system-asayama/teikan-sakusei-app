@@ -1,0 +1,19 @@
+{
+  "name": "teikan-sakusei-app",
+  "description": "定款作成アプリ",
+  "buildpacks": [
+    {
+      "url": "https://github.com/heroku/heroku-buildpack-apt"
+    },
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "env": {},
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  }
+}

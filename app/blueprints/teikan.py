@@ -10,6 +10,7 @@ from flask import (
     flash, session, send_file
 )
 from app.utils import require_roles, ROLES
+from app.utils.inkan_pdf import generate_inkan_pdf
 from app.db import SessionLocal
 from app.models_login import TeikanDocument
 
@@ -935,7 +936,7 @@ def download_seal_registration():
         flash('最初から入力してください', 'warning')
         return redirect(url_for('teikan.step1'))
     try:
-        pdf_bytes = generate_seal_registration_pdf(data)
+        pdf_bytes = generate_inkan_pdf(data)
         company_type = data.get('company_type', '合同会社')
         company_name = data.get('company_name', '会社')
         filename = f"{company_type}{company_name}_印鑑届出書.pdf"
@@ -971,7 +972,7 @@ def download_all_docs():
             zf.writestr(f"{full_name}_設立登記申請書.pdf", app_pdf)
 
             # 印鑑届出書
-            seal_pdf = generate_seal_registration_pdf(data)
+            seal_pdf = generate_inkan_pdf(data)
             zf.writestr(f"{full_name}_印鑑届出書.pdf", seal_pdf)
 
             if company_type != '一般社団法人':
