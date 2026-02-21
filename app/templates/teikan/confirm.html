@@ -160,27 +160,12 @@
   <div class="edit-hint">タップして編集</div>
 </a>
 
-<!-- 連絡先 -->
-<a href="{{ url_for('teikan.step2') }}" class="edit-card">
-  {% if data.get('phone') %}
-  <div class="check-badge">✓</div>
-  {% else %}
-  <div class="empty-badge">›</div>
-  {% endif %}
-  <div class="card-label">連絡先</div>
-  {% if data.get('phone') %}
-  <div class="card-val">{{ data.get('phone') }}</div>
-  {% else %}
-  <div class="card-empty">タップして入力してください</div>
-  {% endif %}
-  <div class="edit-hint">タップして編集</div>
-</a>
-
-<!-- 社員情報 -->
+<!-- 社員情報（連絡先を含む） -->
 {% if data.get('members') %}
   {% for member in data.get('members', []) %}
   <a href="{{ url_for('teikan.step2') }}" class="edit-card">
     <div class="check-badge">✓</div>
+    <div class="card-label">社員情報</div>
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
       {% if member.get('is_representative') %}
       <span class="tag tag-blue">代表社員</span>
@@ -190,6 +175,10 @@
     <div class="card-val">{{ member.get('name', '') }}</div>
     <div style="font-size:13px;color:#666;margin-top:4px;">住所</div>
     <div style="font-size:15px;font-weight:600;color:#1a1a2e;">{{ member.get('postal_code', '') }} {{ member.get('address', '') }}</div>
+    {% if loop.last and data.get('phone') %}
+    <div style="font-size:13px;color:#666;margin-top:4px;">連絡先</div>
+    <div style="font-size:15px;font-weight:600;color:#1a1a2e;">{{ data.get('phone') }}</div>
+    {% endif %}
     <div class="edit-hint">タップして編集</div>
   </a>
   {% endfor %}
