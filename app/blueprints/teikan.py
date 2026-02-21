@@ -1893,208 +1893,227 @@ def generate_seal_registration_pdf(data):  # noqa: C901
     c.drawString(outer_left + 162 * mm, header_y, '日　届出')
 
     # ============================================================
-    # メイン枠（太枠）
+    # レイアウト定義
     # ============================================================
+    seal_col_w = 42 * mm      # 左側印鑑押印欄の幅
+    label_col_w = 30 * mm     # ラベル列の幅（右側記入欄内）
+    right_area_x = outer_left + seal_col_w  # 右側記入欄の開始X座標
+
+    # 行の高さ定義
+    row_company_h = 11 * mm
+    row_address_h = 11 * mm
+    row_shikaku_h = 32 * mm
+    row_card_h = 22 * mm
+    row_deliv_h = 9 * mm
+    row_addr_h = 9 * mm
+    row_furi_h = 5 * mm
+    row_name_h = 9 * mm
+
+    total_height = (row_company_h + row_address_h + row_shikaku_h +
+                    row_card_h + row_deliv_h + row_addr_h + row_furi_h + row_name_h)
+
+    # メイン枠の座標
     main_box_top = header_y - 3 * mm
-    main_box_bottom = outer_bottom + 148 * mm  # 委任状・注意書き分を残す
+    main_box_bottom = main_box_top - total_height
     main_box_left = outer_left
     main_box_right = width - outer_right
     main_box_width = main_box_right - main_box_left
-    main_box_height = main_box_top - main_box_bottom
 
+    # ============================================================
+    # メイン枠（太枠）
+    # ============================================================
     c.setLineWidth(2)
-    c.rect(main_box_left, main_box_bottom, main_box_width, main_box_height)
+    c.rect(main_box_left, main_box_bottom, main_box_width, total_height)
     c.setLineWidth(0.5)
 
     # ============================================================
-    # 印鑑押印欄（左側）
+    # 縦区切り線（印鑑欄と記入欄の境界）
     # ============================================================
-    seal_col_width = 40 * mm
-    seal_box_size = 32 * mm
-    seal_box_x = main_box_left + 2 * mm
-    seal_box_y = main_box_top - 4 * mm - seal_box_size
+    c.line(main_box_left + seal_col_w, main_box_bottom,
+           main_box_left + seal_col_w, main_box_top)
 
-    # 注1テキスト
+    # ============================================================
+    # 各行のY座標を計算（上から下へ）
+    # ============================================================
+    y_company_top = main_box_top
+    y_company_bot = y_company_top - row_company_h
+
+    y_address_top = y_company_bot
+    y_address_bot = y_address_top - row_address_h
+
+    y_shikaku_top = y_address_bot
+    y_shikaku_bot = y_shikaku_top - row_shikaku_h
+
+    y_card_top = y_shikaku_bot
+    y_card_bot = y_card_top - row_card_h
+
+    y_deliv_top = y_card_bot
+    y_deliv_bot = y_deliv_top - row_deliv_h
+
+    y_addr_top = y_deliv_bot
+    y_addr_bot = y_addr_top - row_addr_h
+
+    y_furi_top = y_addr_bot
+    y_furi_bot = y_furi_top - row_furi_h
+
+    y_name_top = y_furi_bot
+    y_name_bot = y_name_top - row_name_h
+
+    # ============================================================
+    # 横線を描画
+    # ============================================================
+    for _y in [y_company_bot, y_address_bot, y_shikaku_bot, y_card_bot,
+               y_deliv_bot, y_addr_bot, y_furi_bot]:
+        c.line(main_box_left, _y, main_box_right, _y)
+
+    # ============================================================
+    # 左側：注1テキスト + 印鑑押印枠
+    # ============================================================
     c.setFont(fn, 7)
-    c.drawString(main_box_left + 1 * mm, main_box_top - 3 * mm, '（注１）（届出印は鮮明に押印してください。）')
+    c.drawString(main_box_left + 1 * mm, main_box_top - 3 * mm,
+                 '（注１）（届出印は鮮明に押印してください。）')
 
-    # 印鑑押印枠
+    seal_box_size = 30 * mm
+    seal_box_x = main_box_left + (seal_col_w - seal_box_size) / 2
+    seal_box_y = main_box_top - 5 * mm - seal_box_size
+
     c.setLineWidth(1)
     c.rect(seal_box_x, seal_box_y, seal_box_size, seal_box_size)
     c.setLineWidth(0.5)
     c.setFont(fn, 7)
     c.setFillColorRGB(0.5, 0.5, 0.5)
-    c.drawString(seal_box_x + 2 * mm, seal_box_y + seal_box_size / 2 - 2 * mm, '（代表印を押印）')
+    c.drawString(seal_box_x + 1 * mm, seal_box_y + seal_box_size / 2 - 2 * mm, '（代表印を押印）')
     c.setFillColorRGB(0, 0, 0)
 
     # ============================================================
-    # 右側：記入欄
+    # 商号・名称行
     # ============================================================
-    right_col_x = main_box_left + seal_col_width + 2 * mm
-    right_col_width = main_box_right - right_col_x - 2 * mm
-    row_h = 10 * mm  # 各行の高さ
+    c.line(right_area_x + label_col_w, y_company_bot,
+           right_area_x + label_col_w, y_company_top)
+    c.setFont(fn, 7.5)
+    c.drawString(right_area_x + 2 * mm,
+                 y_company_bot + row_company_h / 2 - 2 * mm, '商号・名称')
+    c.setFont(fn, 9)
+    c.drawString(right_area_x + label_col_w + 3 * mm,
+                 y_company_bot + row_company_h / 2 - 2 * mm, full_name)
 
-    cur_y = main_box_top - 1 * mm
+    # ============================================================
+    # 本店・主たる事務所行
+    # ============================================================
+    c.line(right_area_x + label_col_w, y_address_bot,
+           right_area_x + label_col_w, y_address_top)
+    c.setFont(fn, 7.5)
+    c.drawString(right_area_x + 2 * mm,
+                 y_address_bot + row_address_h / 2 - 2 * mm, '本店・主たる事務所')
+    c.setFont(fn, 9)
+    c.drawString(right_area_x + label_col_w + 3 * mm,
+                 y_address_bot + row_address_h / 2 - 2 * mm, address)
 
-    def draw_row(label, value, row_height=row_h, font_size=9):
-        """ラベルと値を持つ行を描画する"""
-        nonlocal cur_y
-        row_top = cur_y
-        row_bottom = cur_y - row_height
-        # 横線
-        c.setLineWidth(0.5)
-        c.line(right_col_x, row_bottom, main_box_right - 1 * mm, row_bottom)
-        # 縦区切り（ラベルと値の間）
-        label_col_w = 28 * mm
-        c.line(right_col_x + label_col_w, row_bottom, right_col_x + label_col_w, row_top)
-        # ラベル
-        c.setFont(fn, 7.5)
-        c.drawString(right_col_x + 1 * mm, row_bottom + row_height / 2 - 2 * mm, label)
-        # 値
-        c.setFont(fn, font_size)
-        c.drawString(right_col_x + label_col_w + 2 * mm, row_bottom + row_height / 2 - 2 * mm, value)
-        cur_y = row_bottom
-
-    # 縦区切り線（印鑑欄と記入欄の境界）
-    c.line(main_box_left + seal_col_width, main_box_bottom, main_box_left + seal_col_width, main_box_top)
-
-    # 商号・名称
-    draw_row('商号・名称', full_name, row_height=11 * mm)
-
-    # 本店・主たる事務所
-    draw_row('本店・主たる事務所', address, row_height=11 * mm)
-
-    # 資格・氏名・生年月日の複合行
-    shikaku_top = cur_y
-    shikaku_height = 32 * mm
-    shikaku_bottom = shikaku_top - shikaku_height
+    # ============================================================
+    # 資格/氏名/生年月日複合行（印鑑提出者）
+    # ============================================================
+    c.line(right_area_x + label_col_w, y_shikaku_bot,
+           right_area_x + label_col_w, y_shikaku_top)
 
     # 「印鑑提出者」縦書きラベル
-    label_col_w = 28 * mm
-    inkan_label_x = right_col_x
     c.setFont(fn, 8)
-    for i, ch in enumerate('印鑑提出者'):
-        c.drawString(inkan_label_x + 3 * mm, shikaku_top - (i + 1) * 5.5 * mm, ch)
+    chars = ['印', '鑑', '提', '出', '者']
+    char_spacing = row_shikaku_h / (len(chars) + 1)
+    for i, ch in enumerate(chars):
+        c.drawString(right_area_x + 3 * mm,
+                     y_shikaku_top - (i + 1) * char_spacing, ch)
 
-    # 縦区切り
-    c.line(right_col_x + label_col_w, shikaku_bottom, right_col_x + label_col_w, shikaku_top)
-
-    # 資格行
-    row1_top = shikaku_top
-    row1_bottom = shikaku_top - shikaku_height / 3
-    c.line(right_col_x + label_col_w, row1_bottom, main_box_right - 1 * mm, row1_bottom)
+    # 資格行（上1/3）
+    row1_h = row_shikaku_h / 3
+    row1_bot = y_shikaku_top - row1_h
+    c.line(right_area_x + label_col_w, row1_bot, main_box_right, row1_bot)
     c.setFont(fn, 7.5)
-    c.drawString(right_col_x + label_col_w + 1 * mm, row1_top - 4 * mm, '資　格')
-    # 資格の選択肢
-    if company_type == '合同会社':
-        shikaku_text = '代表社員'
-    elif company_type == '株式会社':
-        shikaku_text = '代表取締役'
-    else:
-        shikaku_text = '代表理事'
+    c.drawString(right_area_x + label_col_w + 2 * mm, y_shikaku_top - 4 * mm, '資　格')
     c.setFont(fn, 7)
-    c.drawString(right_col_x + label_col_w + 25 * mm, row1_top - 3 * mm,
+    c.drawString(right_area_x + label_col_w + 22 * mm, y_shikaku_top - 3.5 * mm,
                  '代表取締役・取締役・代表理事')
-    c.drawString(right_col_x + label_col_w + 25 * mm, row1_top - 7 * mm,
-                 f'理事・（　{shikaku_text}　）')
+    c.drawString(right_area_x + label_col_w + 22 * mm, y_shikaku_top - 7.5 * mm,
+                 f'理事・（　{role}　）')
 
-    # 氏名行
-    row2_top = row1_bottom
-    row2_bottom = shikaku_top - shikaku_height * 2 / 3
-    c.line(right_col_x + label_col_w, row2_bottom, main_box_right - 1 * mm, row2_bottom)
+    # 氏名行（中1/3）
+    row2_bot = y_shikaku_top - row1_h * 2
+    c.line(right_area_x + label_col_w, row2_bot, main_box_right, row2_bot)
     c.setFont(fn, 7.5)
-    c.drawString(right_col_x + label_col_w + 1 * mm, row2_top - 4 * mm, '氏　名')
+    c.drawString(right_area_x + label_col_w + 2 * mm, row1_bot - 4 * mm, '氏　名')
     c.setFont(fn, 9)
-    c.drawString(right_col_x + label_col_w + 20 * mm, row2_top - 5 * mm, rep.get('name', ''))
+    c.drawString(right_area_x + label_col_w + 20 * mm, row1_bot - 5 * mm, rep.get('name', ''))
 
-    # 生年月日行
-    row3_top = row2_bottom
-    row3_bottom = shikaku_bottom
-    c.line(right_col_x + label_col_w, row3_bottom, main_box_right - 1 * mm, row3_bottom)
+    # 生年月日行（下1/3）
     c.setFont(fn, 7.5)
-    c.drawString(right_col_x + label_col_w + 1 * mm, row3_top - 4 * mm, '生年月日')
-    c.setFont(fn, 7.5)
-    c.drawString(right_col_x + label_col_w + 20 * mm, row3_top - 4 * mm,
+    c.drawString(right_area_x + label_col_w + 2 * mm, row2_bot - 4 * mm, '生年月日')
+    c.drawString(right_area_x + label_col_w + 20 * mm, row2_bot - 4 * mm,
                  '大・昭・平・西暦　　　年　　　月　　　日生')
 
-    c.line(right_col_x, shikaku_bottom, main_box_right - 1 * mm, shikaku_bottom)
-    cur_y = shikaku_bottom
-
     # ============================================================
-    # 下部：印鑑カード・会社法人等番号・前任者欄
+    # 印鑑カード欄 + 会社法人等番号欄
     # ============================================================
-    lower_y = cur_y
+    card_div_x = main_box_left + seal_col_w + label_col_w
+    c.line(card_div_x, y_card_bot, card_div_x, y_card_top)
 
-    # 印鑑カード欄（左側）
-    card_col_w = 70 * mm
     c.setFont(fn, 7.5)
-    c.drawString(main_box_left + 2 * mm, lower_y - 5 * mm, '□　印鑑カードは引き継がない。')
+    c.drawString(main_box_left + 2 * mm, y_card_top - 5 * mm, '□　印鑑カードは引き継がない。')
     c.setFont(fn, 7)
-    c.drawString(main_box_left + 1 * mm, lower_y - 9 * mm, '（注')
-    c.drawString(main_box_left + 1 * mm, lower_y - 12 * mm, '２）')
+    c.drawString(main_box_left + 1 * mm, y_card_top - 9 * mm, '（注')
+    c.drawString(main_box_left + 1 * mm, y_card_top - 12.5 * mm, '２）')
     c.setFont(fn, 7.5)
-    c.drawString(main_box_left + 7 * mm, lower_y - 9 * mm, '□　印鑑カードを引き継ぐ。')
-    c.drawString(main_box_left + 7 * mm, lower_y - 14 * mm, '印鑑カード番号　＿＿＿＿＿＿＿＿')
-    c.drawString(main_box_left + 7 * mm, lower_y - 19 * mm, '前　任　者')
+    c.drawString(main_box_left + 7 * mm, y_card_top - 9 * mm, '□　印鑑カードを引き継ぐ。')
+    c.drawString(main_box_left + 7 * mm, y_card_top - 14 * mm, '印鑑カード番号　＿＿＿＿＿＿＿＿')
+    c.drawString(main_box_left + 7 * mm, y_card_top - 19 * mm, '前　任　者')
 
-    # 縦区切り
-    c.line(main_box_left + card_col_w, lower_y, main_box_left + card_col_w, main_box_bottom)
-
-    # 会社法人等番号（右側）
     c.setFont(fn, 7.5)
-    c.drawString(main_box_left + card_col_w + 2 * mm, lower_y - 5 * mm, '会社法人等番号')
-    c.line(main_box_left + card_col_w, lower_y - 8 * mm, main_box_right - 1 * mm, lower_y - 8 * mm)
+    c.drawString(card_div_x + 2 * mm, y_card_top - 5 * mm, '会社法人等番号')
 
-    # 届出人欄（印鑑カード欄の下に配置）
-    deliv_top = lower_y - 22 * mm  # 届出人行の上辺
-    c.line(main_box_left, deliv_top, main_box_right - 1 * mm, deliv_top)
-    deliv_bottom = deliv_top - 9 * mm  # 届出人行の下辺
-    c.line(main_box_left, deliv_bottom, main_box_right - 1 * mm, deliv_bottom)
+    # ============================================================
+    # 届出人行
+    # ============================================================
     c.setFont(fn, 7.5)
-    c.drawString(main_box_left + 2 * mm, deliv_top - 6 * mm,
+    c.drawString(main_box_left + 2 * mm, y_deliv_top - 5.5 * mm,
                  '届出人（注３）　□　印鑑提出者本人　　□　代理人')
 
-    # 住所行
-    addr_top = deliv_bottom
-    addr_bottom = addr_top - 9 * mm
-    c.line(main_box_left, addr_bottom, main_box_right - 1 * mm, addr_bottom)
-    c.setFont(fn, 8)
-    c.drawString(main_box_left + 2 * mm, addr_top - 6 * mm, '住　所')
-    c.setFont(fn, 9)
-    c.drawString(main_box_left + 18 * mm, addr_top - 6 * mm, rep.get('address', ''))
+    # 注3の印の説明テキスト（届出人行の右側）
+    c.setFont(fn, 6.5)
+    c.setFillColorRGB(0.3, 0.3, 0.3)
+    c.drawString(main_box_right - 38 * mm, y_deliv_top - 2.5 * mm, '（注３）の印')
+    c.drawString(main_box_right - 38 * mm, y_deliv_top - 5.5 * mm, '（市区町村に登録した印）')
+    c.drawString(main_box_right - 38 * mm, y_deliv_top - 8.5 * mm, '※　代理人は押印不要')
+    c.setFillColorRGB(0, 0, 0)
 
+    # 注3の印欄（住所・フリガナ・氏名行の右側にまたがる枠）
+    seal3_box_w = 22 * mm
+    seal3_box_h = row_addr_h + row_furi_h + row_name_h
+    seal3_x = main_box_right - seal3_box_w - 1 * mm
+    seal3_y = y_name_bot
+    c.setLineWidth(0.5)
+    c.rect(seal3_x, seal3_y, seal3_box_w, seal3_box_h)
+
+    # ============================================================
+    # 住所行
+    # ============================================================
+    c.setFont(fn, 8)
+    c.drawString(main_box_left + 2 * mm, y_addr_top - 5.5 * mm, '住　所')
+    c.setFont(fn, 9)
+    c.drawString(main_box_left + 18 * mm, y_addr_top - 5.5 * mm, rep.get('address', ''))
+
+    # ============================================================
     # フリガナ行
-    furi_top = addr_bottom
-    furi_bottom = furi_top - 5 * mm
-    c.line(main_box_left, furi_bottom, main_box_right - 1 * mm, furi_bottom)
+    # ============================================================
     c.setFont(fn, 7)
     c.setFillColorRGB(0.4, 0.4, 0.4)
-    c.drawString(main_box_left + 2 * mm, furi_top - 4 * mm, 'フリガナ')
+    c.drawString(main_box_left + 2 * mm, y_furi_top - 3.5 * mm, 'フリガナ')
     c.setFillColorRGB(0, 0, 0)
 
+    # ============================================================
     # 氏名行
-    name_top = furi_bottom
-    name_bottom = name_top - 9 * mm
-    c.line(main_box_left, name_bottom, main_box_right - 1 * mm, name_bottom)
+    # ============================================================
     c.setFont(fn, 8)
-    c.drawString(main_box_left + 2 * mm, name_top - 6 * mm, '氏　名')
+    c.drawString(main_box_left + 2 * mm, y_name_top - 5.5 * mm, '氏　名')
     c.setFont(fn, 9)
-    c.drawString(main_box_left + 18 * mm, name_top - 6 * mm, rep.get('name', ''))
-
-    # 注3の印欄（届出人欄の右側）
-    inkan_note_x = main_box_right - 35 * mm
-    inkan_note_y = deliv_top - 2 * mm
-    c.setFont(fn, 7)
-    c.setFillColorRGB(0.3, 0.3, 0.3)
-    c.drawString(inkan_note_x, inkan_note_y, '（注３）の印')
-    c.drawString(inkan_note_x, inkan_note_y - 3.5 * mm, '（市区町村に登録した印）')
-    c.drawString(inkan_note_x, inkan_note_y - 7 * mm, '※　代理人は押印不要')
-    # 印欄の枠
-    c.setFillColorRGB(0, 0, 0)
-    c.setLineWidth(0.5)
-    seal_note_box_size = 18 * mm
-    c.rect(inkan_note_x + 3 * mm, inkan_note_y - 7 * mm - seal_note_box_size,
-           seal_note_box_size, seal_note_box_size)
+    c.drawString(main_box_left + 18 * mm, y_name_top - 5.5 * mm, rep.get('name', ''))
 
     # ============================================================
     # 委任状欄
