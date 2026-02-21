@@ -128,6 +128,7 @@ def step1():
         if request.form.get('capital_from_step1'):
             data['capital'] = request.form.get('capital', '0')
         data['phone'] = request.form.get('phone', '')
+        data['has_board_of_directors'] = request.form.get('has_board_of_directors', 'false')
         save_session_data(data)
         autosave_draft(data)
         return redirect(url_for('teikan.confirm'))
@@ -1068,70 +1069,119 @@ def _get_full_company_name(data):
         return f"{company_name}{company_type}"
 
 
-def generate_registration_application_pdf(data):
-    """設立登記申請書PDFを生成する"""
-    c, buffer, width, height, ml, mr, mt, mb, cw, fn, mm = _setup_pdf_canvas()
+def generate_registration_application_pdf(data):  # noqa: C901
+    """設立登記申請書PDFを生成する（法務局公式雛形準拠）"""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas as pdfcanvas
+    from reportlab.lib.units import mm
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import io
+    import os
+
+    buffer = io.BytesIO()
+    width, height = A4
+
+    # フォント設定
+    fn = 'IPAGothic'
+    font_paths = [
+        os.path.join(os.path.dirname(__file__), '..', 'fonts', 'ipag.ttf'),
+        '/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf',
+        '/usr/share/fonts/truetype/fonts-japanese-gothic.ttf',
+    ]
+    for fp in font_paths:
+        fp = os.path.normpath(fp)
+        if os.path.exists(fp):
+            try:
+                pdfmetrics.registerFont(TTFont(fn, fp))
+            except Exception:
+                pass
+            break
 
     company_type = data.get('company_type', '合同会社')
+    has_board = data.get('has_board_of_directors', 'false') == 'true'
     full_name = _get_full_company_name(data)
+    company_name_kana = data.get('company_name_kana', '')
     address = data.get('address', '') + ((' ' + data.get('address_detail', '')) if data.get('address_detail') else '')
     capital = data.get('capital', '0')
+    phone = data.get('phone', '')
     try:
         capital_int = int(str(capital).replace(',', '').replace('円', ''))
-        capital_str = f'金{capital_int:,}円'
     except Exception:
-        capital_str = f'金{capital}円'
+        capital_int = 0
     members = data.get('members', [])
     rep_members = [m for m in members if m.get('is_representative')]
     if not rep_members and members:
         rep_members = [members[0]]
-    established_date = data.get('established_date', '') or '令和　　年　　月　　日'
+    rep = rep_members[0] if rep_members else {}
+    established_date = data.get('established_date', '') or ''
 
-    y = height - mt
+    # 登録免許税計算
+    if company_type == '株式会社':
+        tax = max(150000, int(capital_int * 7 / 1000))
+    elif company_type == '一般社団法人':
+        tax = 60000
+    else:
+        tax = max(60000, int(capital_int * 7 / 1000))
 
-    def draw_line(text, x=ml, size=10.5, bold=False, center=False, spacing=18):
-        nonlocal y
+    # ページ設定
+    outer_left = 15 * mm
+    outer_right = 15 * mm
+    outer_top = 10 * mm
+
+    def new_page(c):
+        c.showPage()
+
+    # ============================================================
+    # ページ共通：テキスト描画ヘルパー
+    # ============================================================
+    def draw_text(c, x, y, text, size=10, bold=False):
         c.setFont(fn, size)
-        if center:
-            tw = c.stringWidth(text, fn, size)
-            c.drawString((width - tw) / 2, y, text)
-        else:
-            c.drawString(x, y, text)
-        y -= spacing
+        c.drawString(x, y, text)
 
-    def draw_separator():
-        nonlocal y
-        c.setLineWidth(0.5)
-        c.line(ml, y + 5, width - mr, y + 5)
-        y -= 8
+    def draw_text_center(c, y, text, size=10):
+        c.setFont(fn, size)
+        tw = c.stringWidth(text, fn, size)
+        c.drawString((width - tw) / 2, y, text)
 
-    def draw_field(label, value, label_size=9, value_size=10.5):
-        nonlocal y
-        c.setFont(fn, label_size)
-        c.setFillColorRGB(0.4, 0.4, 0.4)
-        c.drawString(ml, y, label)
-        y -= 14
-        c.setFont(fn, value_size)
-        c.setFillColorRGB(0, 0, 0)
-        # 長いテキストの折り返し
+    def draw_multiline(c, x, y, text, size=9.5, max_width=None, line_height=14):
+        """\u9577いテキストを折り返して描画する"""
+        if max_width is None:
+            max_width = width - outer_left - outer_right
+        c.setFont(fn, size)
         line = ''
         lines = []
-        for char in value:
-            test = line + char
-            if c.stringWidth(test, fn, value_size) <= cw - 5 * mm:
+        for ch in text:
+            test = line + ch
+            if c.stringWidth(test, fn, size) <= max_width:
                 line = test
             else:
                 if line:
                     lines.append(line)
-                line = char
+                line = ch
         if line:
             lines.append(line)
+        cur_y = y
         for ln in lines:
-            c.drawString(ml + 3 * mm, y, ln)
-            y -= 16
-        y -= 4
+            c.drawString(x, cur_y, ln)
+            cur_y -= line_height
+        return cur_y
 
-    # タイトル
+    # ============================================================
+    # ページ 1: 受付番号票貼付欄 + 申請書本体
+    # ============================================================
+    c = pdfcanvas.Canvas(buffer, pagesize=A4)
+
+    # --- 受付番号票貼付欄（枚枠） ---
+    ticket_left = outer_left
+    ticket_right = width - outer_right
+    ticket_top = height - outer_top
+    ticket_bottom = ticket_top - 28 * mm
+    c.setLineWidth(1)
+    c.rect(ticket_left, ticket_bottom, ticket_right - ticket_left, ticket_top - ticket_bottom)
+    draw_text_center(c, ticket_bottom + (ticket_top - ticket_bottom) / 2 - 3 * mm, '受付番号票貼付欄', size=11)
+
+    # --- タイトル ---
     if company_type == '合同会社':
         title = '合同会社設立登記申請書'
     elif company_type == '株式会社':
@@ -1139,114 +1189,272 @@ def generate_registration_application_pdf(data):
     else:
         title = '一般社団法人設立登記申請書'
 
-    c.setFont(fn, 18)
-    tw = c.stringWidth(title, fn, 18)
-    c.drawString((width - tw) / 2, y, title)
-    y -= 40
+    title_y = ticket_bottom - 14 * mm
+    draw_text_center(c, title_y, title, size=16)
 
-    # 申請日
-    draw_field('申請年月日', established_date)
-    draw_separator()
+    cur_y = title_y - 12 * mm
+    left_indent = outer_left + 10 * mm
+    label_x = outer_left + 5 * mm
 
-    # 商号・名称
-    label = '商号' if company_type != '一般社団法人' else '名称'
-    draw_field(label, full_name)
-    draw_separator()
+    def draw_item(c, label, value, kana=None):
+        """1項目を描画する"""
+        nonlocal cur_y
+        if kana:
+            draw_text(c, left_indent, cur_y, 'フリガナ', size=8)
+            cur_y -= 10
+            draw_text(c, left_indent, cur_y, kana, size=9.5)
+            cur_y -= 12
+        draw_text(c, label_x, cur_y, label, size=10.5)
+        if value:
+            draw_multiline(c, left_indent, cur_y, value, size=10.5,
+                           max_width=width - left_indent - outer_right - 5 * mm)
+        cur_y -= 16
 
-    # 本店・主たる事務所
-    office_label = '本店' if company_type != '一般社団法人' else '主たる事務所'
-    draw_field(office_label, address)
-    draw_separator()
+    # 商号
+    draw_item(c, '1．商　号', full_name, kana=company_name_kana if company_name_kana else None)
+    cur_y -= 2
 
-    if company_type != '一般社団法人':
-        # 資本金
-        draw_field('資本金の額', capital_str)
-        draw_separator()
+    # 本店
+    draw_item(c, '1．本　店', address)
+    cur_y -= 2
+
+    # 登記の事由
+    if established_date:
+        jiyuu_text = f'令和{established_date}発起設立の手続終了'
+    else:
+        jiyuu_text = '令和　　年　　月　　日発起設立の手続終了'
+    draw_text(c, label_x, cur_y, '1．登記の事由', size=10.5)
+    draw_text(c, left_indent + 20 * mm, cur_y, jiyuu_text, size=10.5)
+    cur_y -= 16
+    cur_y -= 2
 
     # 登記すべき事項
-    draw_line('登記すべき事項', size=10.5)
-    y -= 4
-    c.setFont(fn, 9)
-    c.setFillColorRGB(0.4, 0.4, 0.4)
-    c.drawString(ml, y, '（別紙または電磁的記録媒体に記録して添付）')
-    c.setFillColorRGB(0, 0, 0)
-    y -= 20
-    draw_separator()
+    draw_text(c, label_x, cur_y, '1．登記すべき事項', size=10.5)
+    cur_y -= 16
+    cur_y -= 2
+
+    # 課税標準金額
+    draw_text(c, label_x, cur_y, '1．課税標準金額', size=10.5)
+    draw_text(c, label_x + 28 * mm, cur_y, '金', size=10.5)
+    draw_text(c, label_x + 33 * mm, cur_y, f'{capital_int:,}', size=10.5)
+    draw_text(c, label_x + 33 * mm + c.stringWidth(f'{capital_int:,}', fn, 10.5) + 2 * mm, cur_y, '円', size=10.5)
+    cur_y -= 16
+    cur_y -= 2
 
     # 登録免許税
-    if company_type == '株式会社':
-        try:
-            tax = max(150000, int(capital_int * 7 / 1000))
-            tax_str = f'金{tax:,}円'
-        except Exception:
-            tax_str = '金150,000円（最低額）'
-        draw_field('登録免許税', tax_str)
-    elif company_type == '一般社団法人':
-        draw_field('登録免許税', '金60,000円')
-    else:
-        try:
-            tax = max(60000, int(capital_int * 7 / 1000))
-            tax_str = f'金{tax:,}円'
-        except Exception:
-            tax_str = '金60,000円（最低額）'
-        draw_field('登録免許税', tax_str)
-    draw_separator()
+    draw_text(c, label_x, cur_y, '1．登録免許税', size=10.5)
+    draw_text(c, label_x + 28 * mm, cur_y, '金', size=10.5)
+    draw_text(c, label_x + 33 * mm, cur_y, f'{tax:,}', size=10.5)
+    draw_text(c, label_x + 33 * mm + c.stringWidth(f'{tax:,}', fn, 10.5) + 2 * mm, cur_y, '円', size=10.5)
+    cur_y -= 16
+    cur_y -= 4
 
     # 添付書類
-    y -= 4
-    draw_line('添付書類', size=10.5)
-    y -= 4
-    c.setFont(fn, 9.5)
-    docs = ['定款　１通']
-    if company_type == '合同会社':
-        docs += [
-            '代表社員・業務執行社員の就任承諾書　各１通',
-            '払込みがあったことを証する書面　１通',
-            '資本金の額の決定を証する書面　１通',
-            '本店所在場所の決定を証する書面　１通',
-            '代表社員の印鑑証明書　１通',
-            '印鑑届出書　１通',
-        ]
-    elif company_type == '株式会社':
-        docs += [
-            '発起人の決定書　１通',
-            '設立時取締役・代表取締役の就任承諾書　各１通',
-            '払込みがあったことを証する書面　１通',
-            '資本金の額の決定を証する書面　１通',
-            '代表取締役の印鑑証明書　１通',
-            '印鑑届出書　１通',
-        ]
+    draw_text(c, label_x - 5 * mm, cur_y, '1．添付書類', size=10.5)
+    cur_y -= 14
+
+    doc_indent = outer_left + 15 * mm
+    right_num_x = width - outer_right - 18 * mm
+
+    def draw_doc_line(c, doc_name, count_str):
+        nonlocal cur_y
+        c.setFont(fn, 9.5)
+        c.drawString(doc_indent, cur_y, doc_name)
+        c.drawRightString(right_num_x + 12 * mm, cur_y, count_str)
+        cur_y -= 13
+
+    # 添付書類リスト（会社種別・取締役会設置の有無により分岐）
+    if company_type == '株式会社':
+        if has_board:
+            # 取締役会設置版
+            draw_doc_line(c, '定款', '1通')
+            draw_doc_line(c, '発起人の同意書', '通')
+            draw_doc_line(c, '設立時代表取締役を選定したことを証する書面', '1通')
+            draw_doc_line(c, '設立時取締役、設立時代表取締役及び設立時監査役の就任承諾書', '通')
+            draw_doc_line(c, '印鑑証明書', '通')
+            draw_doc_line(c, '本人確認証明書', '通')
+            draw_doc_line(c, '設立時取締役及び設立時監査役の調査報告書及びその附属書類', '1通')
+            draw_doc_line(c, '払込みを証する書面', '1通')
+            draw_doc_line(c, '資本金の額の計上に関する設立時代表取締役の証明書', '1通')
+            draw_doc_line(c, '委任状', '1通')
+        else:
+            # 取締役会非設置版
+            draw_doc_line(c, '定款', '1通')
+            draw_doc_line(c, '発起人の同意書', '通')
+            draw_doc_line(c, '設立時代表取締役を選定したことを証する書面', '1通')
+            draw_doc_line(c, '設立時取締役（及び設立時監査役）の就任承諾書', '通')
+            draw_doc_line(c, '印鑑証明書', '通')
+            draw_doc_line(c, '本人確認証明書', '通')
+            draw_doc_line(c, '設立時取締役（及び設立時監査役）の調査報告書及びその附属書類', '1通')
+            draw_doc_line(c, '払込みを証する書面', '1通')
+            draw_doc_line(c, '資本金の額の計上に関する設立時代表取締役の証明書', '1通')
+            draw_doc_line(c, '委任状', '1通')
+    elif company_type == '合同会社':
+        draw_doc_line(c, '定款', '1通')
+        draw_doc_line(c, '発起人の同意書', '通')
+        draw_doc_line(c, '代表社員・業務執行社員の就任承諾書', '通')
+        draw_doc_line(c, '印鑑証明書', '通')
+        draw_doc_line(c, '本人確認証明書', '通')
+        draw_doc_line(c, '払込みを証する書面', '1通')
+        draw_doc_line(c, '資本金の額の計上に関する証明書', '1通')
+        draw_doc_line(c, '委任状', '1通')
+    else:  # 一般社団法人
+        draw_doc_line(c, '定款', '1通')
+        draw_doc_line(c, '設立時社員の決議書', '1通')
+        draw_doc_line(c, '設立時理事・代表理事の就任承諾書', '通')
+        draw_doc_line(c, '印鑑証明書', '通')
+        draw_doc_line(c, '本人確認証明書', '通')
+        draw_doc_line(c, '委任状', '1通')
+
+    cur_y -= 6
+
+    # 「上記のとおり、登記の申請をします。」
+    draw_text(c, outer_left, cur_y,
+              '上記のとおり、登記の申請をします。', size=10.5)
+    cur_y -= 16
+    cur_y -= 4
+
+    # 申請日
+    if established_date:
+        date_text = f'令和{established_date}'
     else:
-        docs += [
-            '設立時社員の決議書　１通',
-            '設立時理事・代表理事の就任承諾書　各１通',
-            '代表理事の印鑑証明書　１通',
-            '印鑑届出書　１通',
-        ]
-    for doc in docs:
-        c.drawString(ml + 5 * mm, y, f'・{doc}')
-        y -= 16
-    y -= 10
-    draw_separator()
+        date_text = '令和　　年　　月　　日'
+    draw_text(c, outer_left + 15 * mm, cur_y, date_text, size=10.5)
+    cur_y -= 16
+    cur_y -= 4
 
-    # 申請人
-    y -= 8
-    draw_line('申請人（代表者）', size=10.5)
-    y -= 4
-    for m in rep_members:
-        c.setFont(fn, 10.5)
-        c.drawString(ml + 5 * mm, y, f'住所　{m.get("address", "")}')
-        y -= 18
-        c.drawString(ml + 5 * mm, y, f'氏名　{m.get("name", "")}　　　　　　　　　　　　　　印')
-        y -= 25
+    # 申請人・代表取締役（取締役会設置版は1ページ目に記載）
+    if company_type != '株式会社' or has_board:
+        draw_text(c, outer_left + 15 * mm, cur_y, '申請人', size=10.5)
+        cur_y -= 16
+        cur_y -= 4
+        draw_text(c, outer_left + 15 * mm, cur_y, '代表取締役　' + rep.get('name', ''), size=10.5)
+        # 印鑑押印欄（点線丸）
+        seal_cx = width - outer_right - 20 * mm
+        seal_cy = cur_y + 5 * mm
+        seal_r = 12 * mm
+        c.setDash(3, 3)
+        c.setLineWidth(0.8)
+        c.setStrokeColorRGB(0.8, 0, 0)
+        c.circle(seal_cx, seal_cy, seal_r, stroke=1, fill=0)
+        c.setDash()
+        c.setStrokeColorRGB(0, 0, 0)
+        cur_y -= 16
 
-    y -= 10
-    draw_line('上記のとおり登記の申請をします。', size=9.5)
+    # 連絡先電話番号・法務局宛・封筒印鑑欄（取締役会設置版または株式会社以外のみ1ページ目に表示）
+    if company_type != '株式会社' or has_board:
+        cur_y -= 4
+        draw_text(c, outer_left + 15 * mm, cur_y, '連絡先の電話番号　' + phone, size=10)
+        cur_y -= 14
 
-    # 法務局宛
-    y -= 10
-    c.setFont(fn, 10.5)
-    c.drawString(ml, y, '　　　　法務局　御中')
+        draw_text(c, outer_left + 15 * mm, cur_y, '法務局　　　支　局　　御中', size=10.5)
+        cur_y -= 12
+        draw_text(c, outer_left + 15 * mm + 20 * mm, cur_y, '出張所', size=10.5)
+
+        # 封筒印鑑押印欄（点線丸）
+        seal2_cx = outer_left + 15 * mm
+        seal2_cy = cur_y - 15 * mm
+        seal2_r = 12 * mm
+        c.setDash(3, 3)
+        c.setLineWidth(0.8)
+        c.setStrokeColorRGB(0.8, 0, 0)
+        c.circle(seal2_cx, seal2_cy, seal2_r, stroke=1, fill=0)
+        c.setDash()
+        c.setStrokeColorRGB(0, 0, 0)
+
+    # ============================================================
+    # ページ 2: 取締役会非設置版の申請人欄（非設置版のみ）
+    # ============================================================
+    if company_type == '株式会社' and not has_board:
+        c.showPage()
+        cur_y2 = height - outer_top - 10 * mm
+
+        draw_text(c, outer_left + 15 * mm, cur_y2, '申請人', size=10.5)
+        cur_y2 -= 16
+        cur_y2 -= 4
+        draw_text(c, outer_left + 15 * mm, cur_y2, '代表取締役　' + rep.get('name', ''), size=10.5)
+        # 印鑑押印欄（点線丸）
+        seal_cx2 = width - outer_right - 20 * mm
+        seal_cy2 = cur_y2 + 5 * mm
+        seal_r2 = 12 * mm
+        c.setDash(3, 3)
+        c.setLineWidth(0.8)
+        c.setStrokeColorRGB(0.8, 0, 0)
+        c.circle(seal_cx2, seal_cy2, seal_r2, stroke=1, fill=0)
+        c.setDash()
+        c.setStrokeColorRGB(0, 0, 0)
+        cur_y2 -= 16
+        cur_y2 -= 4
+
+        draw_text(c, outer_left + 15 * mm, cur_y2, '連絡先の電話番号　' + phone, size=10)
+        cur_y2 -= 14
+
+        draw_text(c, outer_left + 15 * mm, cur_y2, '法務局　　　支　局　　御中', size=10.5)
+        cur_y2 -= 12
+        draw_text(c, outer_left + 15 * mm + 20 * mm, cur_y2, '出張所', size=10.5)
+
+        seal3_cx = outer_left + 15 * mm
+        seal3_cy = cur_y2 - 15 * mm
+        seal3_r = 12 * mm
+        c.setDash(3, 3)
+        c.setLineWidth(0.8)
+        c.setStrokeColorRGB(0.8, 0, 0)
+        c.circle(seal3_cx, seal3_cy, seal3_r, stroke=1, fill=0)
+        c.setDash()
+        c.setStrokeColorRGB(0, 0, 0)
+
+    # ============================================================
+    # 最終ページ: 収入印紙貼付台紙
+    # ============================================================
+    c.showPage()
+    cur_y3 = height - outer_top - 5 * mm
+    draw_text(c, outer_left, cur_y3, '収入印紙貼付台紙', size=10)
+    cur_y3 -= 10 * mm
+
+    # 印鑑押印欄（点線丸）
+    seal4_cx = outer_left + 15 * mm
+    seal4_cy = cur_y3 - 20 * mm
+    seal4_r = 12 * mm
+    c.setDash(3, 3)
+    c.setLineWidth(0.8)
+    c.setStrokeColorRGB(0.8, 0, 0)
+    c.circle(seal4_cx, seal4_cy, seal4_r, stroke=1, fill=0)
+    c.setDash()
+    c.setStrokeColorRGB(0, 0, 0)
+
+    # 収入印紙貼付欄（ギザギザ枚枠）
+    stamp_left = width - outer_right - 30 * mm
+    stamp_bottom = cur_y3 - 35 * mm
+    stamp_w = 25 * mm
+    stamp_h = 30 * mm
+    # ギザギザ枚枠を描画
+    c.setLineWidth(0.5)
+    seg = 2 * mm
+    sx, sy = stamp_left, stamp_bottom
+    sw, sh = stamp_w, stamp_h
+    # 上辺
+    x = sx
+    while x < sx + sw:
+        c.line(x, sy + sh, min(x + seg, sx + sw), sy + sh)
+        x += seg * 2
+    # 下辺
+    x = sx
+    while x < sx + sw:
+        c.line(x, sy, min(x + seg, sx + sw), sy)
+        x += seg * 2
+    # 左辺
+    y2 = sy
+    while y2 < sy + sh:
+        c.line(sx, y2, sx, min(y2 + seg, sy + sh))
+        y2 += seg * 2
+    # 右辺
+    y2 = sy
+    while y2 < sy + sh:
+        c.line(sx + sw, y2, sx + sw, min(y2 + seg, sy + sh))
+        y2 += seg * 2
+    # 収入印紙テキスト
+    draw_text(c, stamp_left + 3 * mm, stamp_bottom + stamp_h / 2 + 2 * mm, '収　入', size=9)
+    draw_text(c, stamp_left + 3 * mm, stamp_bottom + stamp_h / 2 - 8 * mm, '印　紙', size=9)
 
     c.save()
     buffer.seek(0)

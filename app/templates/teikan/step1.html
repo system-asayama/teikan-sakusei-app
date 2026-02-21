@@ -150,6 +150,31 @@
       placeholder="例：○○ビル101号" value="{{ data.get('address_detail', '') }}">
   </div>
 
+  <!-- 取締役会設置の有無（株式会社のみ） -->
+  {% if data.get('company_type') == '株式会社' %}
+  <div class="form-group">
+    <label class="form-label">取締役会の設置 <span class="required">必須</span></label>
+    <p class="form-hint" style="margin-bottom:10px;">取締役会を設置するかどうかを選択してください。設置・非設置によって登記申請書の添付書類が異なります。</p>
+    {% set has_board = data.get('has_board_of_directors', 'false') %}
+    <label class="checkbox-item {% if has_board == 'false' %}selected{% endif %}" style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+      <input type="radio" name="has_board_of_directors" value="false" {% if has_board == 'false' %}checked{% endif %}>
+      <div>
+        <div class="checkbox-label" style="font-weight:600;">設置しない（取締役会なし）</div>
+        <div class="form-hint" style="margin:2px 0 0;">取締役1名以上で設立できます。小規模な会社に適しています。</div>
+      </div>
+    </label>
+    <label class="checkbox-item {% if has_board == 'true' %}selected{% endif %}" style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;">
+      <input type="radio" name="has_board_of_directors" value="true" {% if has_board == 'true' %}checked{% endif %}>
+      <div>
+        <div class="checkbox-label" style="font-weight:600;">設置する（取締役会あり）</div>
+        <div class="form-hint" style="margin:2px 0 0;">取締役3名以上・監査役1名以上が必要です。大規模な会社や上場を目指す場合に適しています。</div>
+      </div>
+    </label>
+  </div>
+  {% else %}
+  <input type="hidden" name="has_board_of_directors" value="false">
+  {% endif %}
+
   <!-- 連絡先電話番号 -->
   <div class="form-group">
     <label class="form-label" for="phone">連絡先電話番号 <span class="optional">任意</span></label>
