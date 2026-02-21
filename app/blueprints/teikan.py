@@ -323,6 +323,16 @@ def save():
         db.close()
 
 
+@bp.route('/new_corporation')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def new_corporation():
+    """新規法人設立：セッションをクリアして中間ページへ"""
+    session.pop('teikan_data', None)
+    session.pop('teikan_draft_id', None)
+    session.modified = True
+    return redirect(url_for('teikan.new_setup'))
+
+
 @bp.route('/new_setup')
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
 def new_setup():
