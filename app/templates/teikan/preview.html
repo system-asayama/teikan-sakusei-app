@@ -246,7 +246,7 @@
   <div class="teikan-article">
     <div class="teikan-article-header">第１５条（附則）</div>
     <div class="teikan-article-body">
-      <p>当会社の定款は、{{ data.get('established_date', '令和　年　月　日') }}に作成した。</p>
+      <p>当会社の定款は、{{ data.get('established_date') or '令和　　年　　月　　日' }}に作成した。</p>
     </div>
   </div>
 
@@ -255,7 +255,7 @@
     <p>以上、合同会社設立のため、この定款を作成し、社員が記名押印する。</p>
     <br>
     <div class="teikan-sign-line">
-      <span>{{ data.get('established_date', '令和　年　月　日') }}</span>
+      <span>{{ data.get('established_date') or '令和　　年　　月　　日' }}</span>
     </div>
     <br>
     {% for member in data.get('members', []) %}

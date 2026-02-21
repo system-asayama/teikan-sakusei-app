@@ -385,7 +385,7 @@ def generate_teikan_pdf(data):
     # ===== 第五章 附則 =====
     draw_chapter('第五章　附則')
 
-    established_date = data.get('established_date', '令和　年　月　日')
+    established_date = data.get('established_date', '') or '令和　　年　　月　　日'
 
     draw_article('12', '設立に際して出資される財産の価額',
         [f'当会社の設立に際して出資される財産の価額は、金{capital_str}とする。'])
