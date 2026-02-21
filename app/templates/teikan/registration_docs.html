@@ -309,12 +309,17 @@
 </div>
 {% endif %}
 
-<div class="doc-card" style="background:#fafafa;">
+<div class="doc-card">
   <div class="doc-card-title">
-    <span class="badge-manual">自分で用意</span>
+    <span class="badge-auto">自動生成</span>
     印鑑カード交付申請書
   </div>
-  <div class="doc-card-desc">法務局で印鑑証明書の交付を受けるためのカードを申請する書面です。法務局の窓口で用紙を入手できます。</div>
+  <div class="doc-card-desc">法務局で印鑑証明書の交付を受けるためのカードを申請する書面です。設立登記完了後に法務局に提出します。</div>
+  <div class="doc-card-actions">
+    <a href="{{ url_for('teikan.download_inkan_card') }}" class="btn btn-primary" style="text-decoration:none;padding:10px 16px;font-size:13px;">
+      ⬇️ PDFをダウンロード
+    </a>
+  </div>
 </div>
 
 <!-- 一括ダウンロード -->
