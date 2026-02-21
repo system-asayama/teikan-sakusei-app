@@ -74,7 +74,7 @@
 
 <!-- ステップ1 -->
 <div class="step-badge">STEP 1</div>
-<a href="{{ url_for('teikan.new_document') }}" class="setup-card">
+<a href="{% if has_data %}{{ url_for('teikan.confirm') }}{% else %}{{ url_for('teikan.new_document') }}{% endif %}" class="setup-card">
   <div class="setup-card-icon">📋</div>
   <div class="setup-card-body">
     <div class="setup-card-title">法人基本情報を入力する</div>
