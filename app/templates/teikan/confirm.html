@@ -166,12 +166,11 @@
   <a href="{{ url_for('teikan.step2') }}" class="edit-card">
     <div class="check-badge">✓</div>
     <div class="card-label">社員情報</div>
-    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-      {% if member.get('is_representative') %}
+    {% if member.get('is_representative') %}
+    <div style="margin-bottom:6px;">
       <span class="tag tag-blue">代表社員</span>
-      {% endif %}
-      <span class="tag tag-dark">出資金: {% if member.get('contribution') %}{{ '{:,}'.format(member.get('contribution', 0)|int) }}{% else %}0{% endif %}円</span>
     </div>
+    {% endif %}
     <div class="card-val">{{ member.get('name', '') }}</div>
     <div style="font-size:13px;color:#666;margin-top:4px;">住所</div>
     <div style="font-size:15px;font-weight:600;color:#1a1a2e;">{{ member.get('postal_code', '') }} {{ member.get('address', '') }}</div>
