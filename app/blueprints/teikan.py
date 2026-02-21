@@ -120,7 +120,7 @@ def step1():
         data['company_type'] = request.form.get('company_type', '合同会社')
         data['company_name'] = request.form.get('company_name', '')
         data['company_name_kana'] = request.form.get('company_name_kana', '')
-        data['company_type_position'] = request.form.get('company_type_position', 'after')
+        data['company_type_position'] = request.form.get('company_type_position', 'before')
         data['registration_method'] = request.form.get('registration_method', '法務局に直接提出')
         data['postal_code'] = request.form.get('postal_code', '')
         data['address'] = request.form.get('address', '')
