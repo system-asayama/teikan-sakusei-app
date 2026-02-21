@@ -139,7 +139,7 @@
 
 <!-- 法人基本情報（法人形態・商号・住所を統合） -->
 <a href="{% if data.get('company_type') %}{{ url_for('teikan.step1') }}{% else %}{{ url_for('teikan.select_type') }}{% endif %}" class="edit-card">
-  {% if data.get('company_name') and data.get('address') %}
+  {% if data.get('company_name') and data.get('address') and (data.get('company_type') == '一般社団法人' or (data.get('capital') and data.get('capital') != '0')) %}
   <div class="check-badge">✓</div>
   {% else %}
   <div class="empty-badge">›</div>
@@ -151,6 +151,14 @@
     <div style="font-size:13px;color:#666;margin-top:6px;">{{ data.get('address', '') }}{% if data.get('address_detail') %} {{ data.get('address_detail') }}{% endif %}</div>
     {% else %}
     <div style="font-size:13px;color:#bbb;margin-top:6px;font-style:italic;">住所未入力</div>
+    {% endif %}
+    {% if data.get('company_type') != '一般社団法人' %}
+    {% if data.get('capital') and data.get('capital') != '0' %}
+    <div style="font-size:13px;color:#666;margin-top:6px;">資本金</div>
+    <div style="font-size:15px;font-weight:600;color:#1a1a2e;">{{ '{:,}'.format(data.get('capital', 0)|int) }}円</div>
+    {% else %}
+    <div style="font-size:13px;color:#bbb;margin-top:6px;font-style:italic;">資本金未入力</div>
+    {% endif %}
     {% endif %}
   {% elif data.get('company_type') %}
     <div class="card-val" style="color:#666;">{{ data.get('company_type') }}（商号未入力）</div>
@@ -189,22 +197,6 @@
   <div class="edit-hint">タップして入力</div>
 </a>
 {% endif %}
-
-<!-- 資本金 -->
-<a href="{{ url_for('teikan.step2') }}" class="edit-card">
-  {% if data.get('capital') %}
-  <div class="check-badge">✓</div>
-  {% else %}
-  <div class="empty-badge">›</div>
-  {% endif %}
-  <div class="card-label">資本金</div>
-  {% if data.get('capital') %}
-  <div class="card-val">{{ '{:,}'.format(data.get('capital', 0)|int) }}円</div>
-  {% else %}
-  <div class="card-empty">タップして入力してください</div>
-  {% endif %}
-  <div class="edit-hint">タップして編集</div>
-</a>
 
 <!-- 事業内容 -->
 <a href="{{ url_for('teikan.step3') }}" class="edit-card">

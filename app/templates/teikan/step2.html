@@ -138,20 +138,6 @@
     </button>
   </div>
 
-  <hr class="divider">
-
-  {% if company_type != '一般社団法人' %}
-  <!-- 資本金 -->
-  <div class="form-group">
-    <label class="form-label" for="capital">資本金（円）<span class="required">必須</span></label>
-    <input type="number" id="capital" name="capital" class="form-control"
-      placeholder="例：200000" value="{{ data.get('capital', '') }}" min="1" required>
-    <p class="form-hint">通常、{{ member_label }}の出資金の合計と同額になります</p>
-  </div>
-  {% else %}
-  <input type="hidden" name="capital" value="0">
-  {% endif %}
-
   <!-- 連絡先電話番号 -->
   <div class="form-group">
     <label class="form-label" for="phone">連絡先電話番号 <span class="optional">任意</span></label>

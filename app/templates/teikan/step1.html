@@ -59,6 +59,7 @@
     </div>
     <input type="hidden" name="company_type" value="{{ data.get('company_type', '合同会社') }}">
     <input type="hidden" name="registration_method" value="{{ data.get('registration_method', '法務局に直接提出') }}">
+    <input type="hidden" name="capital_from_step1" value="1">
   </div>
 
   <!-- 商号 -->
@@ -90,6 +91,18 @@
     <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
       placeholder="例：メギ" value="{{ data.get('company_name_kana', '') }}">
   </div>
+
+  <!-- 資本金（一般社団法人以外） -->
+  {% if data.get('company_type') != '一般社団法人' %}
+  <div class="form-group">
+    <label class="form-label" for="capital">資本金（円）<span class="required">必須</span></label>
+    <input type="number" id="capital" name="capital" class="form-control"
+      placeholder="例：200000" value="{{ data.get('capital', '') }}" min="1" required>
+    <p class="form-hint">社員の出資金の合計と同額になります</p>
+  </div>
+  {% else %}
+  <input type="hidden" name="capital" value="0">
+  {% endif %}
 
   <!-- 本店所在地 -->
   <div class="form-group">
