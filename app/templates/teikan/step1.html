@@ -81,6 +81,16 @@
     </p>
   </div>
 
+  <!-- 商号（フリガナ） -->
+  <div class="form-group">
+    <label class="form-label" for="company_name_kana">
+      {% if data.get('company_type') == '一般社団法人' %}法人名フリガナ{% else %}商号フリガナ{% endif %}
+      <span class="optional">任意</span>
+    </label>
+    <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
+      placeholder="例：サクラコンサルティング" value="{{ data.get('company_name_kana', '') }}">
+  </div>
+
   {% if data.get('company_type') != '一般社団法人' %}
   <!-- 法人種別の前後選択 -->
   <div class="form-group">
@@ -103,16 +113,6 @@
   {% else %}
   <input type="hidden" name="company_type_position" value="before">
   {% endif %}
-
-  <!-- 商号（フリガナ） -->
-  <div class="form-group">
-    <label class="form-label" for="company_name_kana">
-      {% if data.get('company_type') == '一般社団法人' %}法人名フリガナ{% else %}商号フリガナ{% endif %}
-      <span class="optional">任意</span>
-    </label>
-    <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
-      placeholder="例：サクラコンサルティング" value="{{ data.get('company_name_kana', '') }}">
-  </div>
 
   <!-- 資本金（一般社団法人以外） -->
   {% if data.get('company_type') != '一般社団法人' %}
