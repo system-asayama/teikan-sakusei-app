@@ -323,6 +323,15 @@ def save():
         db.close()
 
 
+@bp.route('/new_setup')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def new_setup():
+    """新しい法人を設立する中間ページ"""
+    data = get_session_data()
+    has_data = bool(data.get('company_name'))
+    return render_template('teikan/new_setup.html', has_data=has_data)
+
+
 @bp.route('/history')
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
 def history():
