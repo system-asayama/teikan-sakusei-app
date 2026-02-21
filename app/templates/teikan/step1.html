@@ -111,7 +111,7 @@
       <span class="optional">任意</span>
     </label>
     <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
-      placeholder="例：サクラコンサルティング" value="{{ data.get('company_name_kana', '') }}">
+      placeholder="{% if data.get('company_type') == '一般社団法人' %}例：ニホンシエンネットワーク{% else %}例：サクラコンサルティング{% endif %}" value="{{ data.get('company_name_kana', '') }}">
   </div>
 
   <!-- 資本金（一般社団法人以外） -->
