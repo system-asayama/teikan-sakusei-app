@@ -49,7 +49,7 @@ def step1():
         data['address'] = request.form.get('address', '')
         data['address_detail'] = request.form.get('address_detail', '')
         save_session_data(data)
-        return redirect(url_for('teikan.step2'))
+        return redirect(url_for('teikan.confirm'))
 
     return render_template('teikan/step1.html', data=data)
 
@@ -79,7 +79,7 @@ def step2():
         data['capital'] = request.form.get('capital', '0')
         data['phone'] = request.form.get('phone', '')
         save_session_data(data)
-        return redirect(url_for('teikan.step3'))
+        return redirect(url_for('teikan.confirm'))
 
     return render_template('teikan/step2.html', data=data)
 
@@ -103,7 +103,7 @@ def step3():
 
         data['purposes'] = purposes
         save_session_data(data)
-        return redirect(url_for('teikan.step4'))
+        return redirect(url_for('teikan.confirm'))
 
     return render_template('teikan/step3.html', data=data)
 
@@ -129,11 +129,8 @@ def step4():
 @bp.route('/confirm')
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
 def confirm():
-    """確認画面：入力内容の確認"""
+    """確認画面：入力内容の確認（未入力でも表示、各項目から編集）"""
     data = get_session_data()
-    if not data.get('company_name'):
-        flash('最初から入力してください', 'warning')
-        return redirect(url_for('teikan.step1'))
     return render_template('teikan/confirm.html', data=data)
 
 

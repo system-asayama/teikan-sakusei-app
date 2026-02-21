@@ -5,20 +5,20 @@
 {% block step_indicator %}
 <nav class="step-indicator">
   <div class="step-indicator-inner">
-    <div class="step-item done">
-      <span class="step-num">✓</span>
+    <div class="step-item {% if data.get('company_name') %}done{% else %}active{% endif %}">
+      <span class="step-num">{% if data.get('company_name') %}✓{% else %}1{% endif %}</span>
       <span>情報入力</span>
     </div>
-    <div class="step-item done">
-      <span class="step-num">✓</span>
+    <div class="step-item {% if data.get('members') %}done{% elif data.get('company_name') %}active{% endif %}">
+      <span class="step-num">{% if data.get('members') %}✓{% else %}2{% endif %}</span>
       <span>社員情報</span>
     </div>
-    <div class="step-item done">
-      <span class="step-num">✓</span>
+    <div class="step-item {% if data.get('purposes') %}done{% elif data.get('members') %}active{% endif %}">
+      <span class="step-num">{% if data.get('purposes') %}✓{% else %}3{% endif %}</span>
       <span>事業目的</span>
     </div>
-    <div class="step-item done">
-      <span class="step-num">✓</span>
+    <div class="step-item {% if data.get('fiscal_end_month') %}done{% elif data.get('purposes') %}active{% endif %}">
+      <span class="step-num">{% if data.get('fiscal_end_month') %}✓{% else %}4{% endif %}</span>
       <span>決算期</span>
     </div>
     <div class="step-item active">
@@ -63,21 +63,50 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 15px;
-  font-weight: bold;
-  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 14px;
 }
-.edit-card .card-label {
+.edit-card .empty-badge {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  background: #e0e0e0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-weight: 700;
+  font-size: 14px;
+}
+.card-label {
   font-size: 12px;
   color: #888;
   margin-bottom: 4px;
 }
-.edit-card .card-val {
+.card-val {
   font-size: 16px;
   font-weight: 700;
   color: #1a1a2e;
 }
-.edit-card .edit-hint {
+.card-empty {
+  font-size: 14px;
+  color: #bbb;
+  font-style: italic;
+}
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tag-blue { background: #4A90E2; color: #fff; }
+.tag-dark { background: #1a1a2e; color: #fff; }
+.edit-hint {
   font-size: 11px;
   color: #4A90E2;
   margin-top: 4px;
@@ -88,7 +117,21 @@
 }
 </style>
 
-<h1 class="section-title">{{ data.get('company_type', '合同会社') }}{{ data.get('company_name', '') }}</h1>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" style="margin-bottom:16px;">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<h1 class="section-title">
+  {% if data.get('company_name') %}
+    {{ data.get('company_type', '合同会社') }}{{ data.get('company_name', '') }}
+  {% else %}
+    新しい定款を作成
+  {% endif %}
+</h1>
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
   <span style="font-size:14px;color:#666;">✏️ 情報入力ステップ</span>
 </div>
@@ -96,97 +139,171 @@
 
 <!-- 法人形態・商号 -->
 <a href="{{ url_for('teikan.step1') }}" class="edit-card">
+  {% if data.get('company_name') %}
   <div class="check-badge">✓</div>
+  {% else %}
+  <div class="empty-badge">›</div>
+  {% endif %}
   <div class="card-label">法人形態/商号等</div>
+  {% if data.get('company_name') %}
   <div class="card-val">{{ data.get('company_type', '合同会社') }}{{ data.get('company_name', '') }}</div>
+  {% else %}
+  <div class="card-empty">タップして入力してください</div>
+  {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
 
 <!-- 登記方法 -->
 <a href="{{ url_for('teikan.step1') }}" class="edit-card">
+  {% if data.get('registration_method') %}
   <div class="check-badge">✓</div>
+  {% else %}
+  <div class="empty-badge">›</div>
+  {% endif %}
   <div class="card-label">法務局に登記申請する方法</div>
-  <div class="card-val">{{ data.get('registration_method', '法務局に直接提出') }}</div>
+  {% if data.get('registration_method') %}
+  <div class="card-val">{{ data.get('registration_method') }}</div>
+  {% else %}
+  <div class="card-empty">タップして入力してください</div>
+  {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
 
 <!-- 本店所在地 -->
 <a href="{{ url_for('teikan.step1') }}" class="edit-card">
+  {% if data.get('address') %}
   <div class="check-badge">✓</div>
+  {% else %}
+  <div class="empty-badge">›</div>
+  {% endif %}
   <div class="card-label">法人の住所</div>
+  {% if data.get('address') %}
   <div class="card-val">{{ data.get('address', '') }}{{ data.get('address_detail', '') }}</div>
+  {% else %}
+  <div class="card-empty">タップして入力してください</div>
+  {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
 
 <!-- 連絡先 -->
 <a href="{{ url_for('teikan.step2') }}" class="edit-card">
+  {% if data.get('phone') %}
   <div class="check-badge">✓</div>
+  {% else %}
+  <div class="empty-badge">›</div>
+  {% endif %}
   <div class="card-label">連絡先</div>
-  <div class="card-val">{{ data.get('phone', '（未入力）') }}</div>
+  {% if data.get('phone') %}
+  <div class="card-val">{{ data.get('phone') }}</div>
+  {% else %}
+  <div class="card-empty">タップして入力してください</div>
+  {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
 
 <!-- 社員情報 -->
-{% for member in data.get('members', []) %}
+{% if data.get('members') %}
+  {% for member in data.get('members', []) %}
+  <a href="{{ url_for('teikan.step2') }}" class="edit-card">
+    <div class="check-badge">✓</div>
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+      {% if member.get('is_representative') %}
+      <span class="tag tag-blue">代表社員</span>
+      {% endif %}
+      <span class="tag tag-dark">出資金: {% if member.get('contribution') %}{{ '{:,}'.format(member.get('contribution', 0)|int) }}{% else %}0{% endif %}円</span>
+    </div>
+    <div class="card-val">{{ member.get('name', '') }}</div>
+    <div style="font-size:13px;color:#666;margin-top:4px;">住所</div>
+    <div style="font-size:15px;font-weight:600;color:#1a1a2e;">{{ member.get('postal_code', '') }} {{ member.get('address', '') }}</div>
+    <div class="edit-hint">タップして編集</div>
+  </a>
+  {% endfor %}
+{% else %}
 <a href="{{ url_for('teikan.step2') }}" class="edit-card">
-  <div class="check-badge">✓</div>
-  <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
-    {% if member.get('is_representative') %}
-    <span class="tag tag-blue">代表社員</span>
-    {% endif %}
-    <span class="tag tag-dark">出資金: {% if member.get('contribution') %}{{ '{:,}'.format(member.get('contribution', 0)|int) }}{% else %}0{% endif %}円</span>
-  </div>
-  <div class="card-val">{{ member.get('name', '') }}</div>
-  <div style="font-size:13px;color:#666;margin-top:4px;">住所</div>
-  <div style="font-size:15px;font-weight:600;color:#1a1a2e;">{{ member.get('postal_code', '') }} {{ member.get('address', '') }}</div>
-  <div class="edit-hint">タップして編集</div>
+  <div class="empty-badge">›</div>
+  <div class="card-label">社員情報</div>
+  <div class="card-empty">タップして入力してください</div>
+  <div class="edit-hint">タップして入力</div>
 </a>
-{% endfor %}
+{% endif %}
 
 <!-- 資本金 -->
 <a href="{{ url_for('teikan.step2') }}" class="edit-card">
+  {% if data.get('capital') %}
   <div class="check-badge">✓</div>
+  {% else %}
+  <div class="empty-badge">›</div>
+  {% endif %}
   <div class="card-label">資本金</div>
-  <div class="card-val">{% if data.get('capital') %}{{ '{:,}'.format(data.get('capital', 0)|int) }}{% else %}0{% endif %}円</div>
+  {% if data.get('capital') %}
+  <div class="card-val">{{ '{:,}'.format(data.get('capital', 0)|int) }}円</div>
+  {% else %}
+  <div class="card-empty">タップして入力してください</div>
+  {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
 
 <!-- 事業内容 -->
 <a href="{{ url_for('teikan.step3') }}" class="edit-card">
+  {% if data.get('purposes') %}
   <div class="check-badge">✓</div>
+  {% else %}
+  <div class="empty-badge">›</div>
+  {% endif %}
   <div class="card-label">事業内容</div>
+  {% if data.get('purposes') %}
   <ol style="margin:8px 0 0 16px;padding:0;">
     {% for p in data.get('purposes', []) %}
     <li style="font-size:14px;color:#333;margin-bottom:4px;">{{ p }}</li>
     {% endfor %}
   </ol>
+  {% else %}
+  <div class="card-empty">タップして入力してください</div>
+  {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
 
 <!-- 決算期 -->
 <a href="{{ url_for('teikan.step4') }}" class="edit-card">
+  {% if data.get('fiscal_end_month') %}
   <div class="check-badge">✓</div>
+  {% else %}
+  <div class="empty-badge">›</div>
+  {% endif %}
   <div class="card-label">決算期</div>
-  {% set sm = data.get('fiscal_start_month', '3') %}
-  {% set sd = data.get('fiscal_start_day', '1') %}
-  {% set em = data.get('fiscal_end_month', '2') %}
-  {% set ed = data.get('fiscal_end_day', '末日') %}
-  <div class="card-val">
-    {{ sm }}月{{ sd }}日〜翌年{{ em }}月{% if ed == '末日' %}末日{% else %}{{ ed }}日{% endif %}
-  </div>
+  {% if data.get('fiscal_end_month') %}
+    {% set sm = data.get('fiscal_start_month', '3') %}
+    {% set sd = data.get('fiscal_start_day', '1') %}
+    {% set em = data.get('fiscal_end_month', '2') %}
+    {% set ed = data.get('fiscal_end_day', '末日') %}
+    <div class="card-val">
+      {{ sm }}月{{ sd }}日〜翌年{{ em }}月{% if ed == '末日' %}末日{% else %}{{ ed }}日{% endif %}
+    </div>
+  {% else %}
+  <div class="card-empty">タップして入力してください</div>
+  {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
 
 <!-- 設立予定日 -->
 <a href="{{ url_for('teikan.step4') }}" class="edit-card">
+  {% if data.get('established_date') %}
   <div class="check-badge">✓</div>
+  {% else %}
+  <div class="empty-badge">›</div>
+  {% endif %}
   <div class="card-label">設立予定日</div>
-  <div class="card-val">{{ data.get('established_date') or '（未入力）' }}</div>
+  {% if data.get('established_date') %}
+  <div class="card-val">{{ data.get('established_date') }}</div>
+  {% else %}
+  <div class="card-empty">（任意）タップして入力</div>
+  {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
 
 <!-- アクションボタン -->
 <div style="margin-top:28px;">
+  {% if data.get('company_name') %}
   <a href="{{ url_for('teikan.preview') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;">
     📄 定款をプレビューする
   </a>
@@ -198,6 +315,11 @@
       💾 定款を保存する
     </button>
   </form>
+  {% else %}
+  <a href="{{ url_for('teikan.step1') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;">
+    ✏️ 法人情報を入力する（ステップ1から）
+  </a>
+  {% endif %}
   <a href="{{ url_for('teikan.history') }}" style="display:block;text-align:center;font-size:13px;color:#4A90E2;text-decoration:none;margin-top:8px;">
     一覧を見る →
   </a>
