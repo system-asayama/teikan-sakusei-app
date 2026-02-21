@@ -127,9 +127,13 @@
 
 <h1 class="section-title">
   {% if data.get('company_name') %}
+    {% if data.get('company_type_position') == 'before' %}
     {{ data.get('company_type', '合同会社') }}{{ data.get('company_name', '') }}
+    {% else %}
+    {{ data.get('company_name', '') }}{{ data.get('company_type', '合同会社') }}
+    {% endif %}
   {% else %}
-    新しい定款を作成
+    新しい定欻を作成
   {% endif %}
 </h1>
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
@@ -146,7 +150,11 @@
   {% endif %}
   <div class="card-label">法人基本情報</div>
   {% if data.get('company_name') %}
+    {% if data.get('company_type_position') == 'before' %}
     <div class="card-val">{{ data.get('company_type', '合同会社') }}{{ data.get('company_name', '') }}</div>
+    {% else %}
+    <div class="card-val">{{ data.get('company_name', '') }}{{ data.get('company_type', '合同会社') }}</div>
+    {% endif %}
     {% if data.get('address') %}
     <div style="font-size:13px;color:#666;margin-top:6px;">{{ data.get('address', '') }}{% if data.get('address_detail') %} {{ data.get('address_detail') }}{% endif %}</div>
     {% else %}

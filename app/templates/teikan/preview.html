@@ -99,6 +99,12 @@
 
 {% set company_type = data.get('company_type', '合同会社') %}
 {% set company_name = data.get('company_name', '') %}
+{% set company_type_position = data.get('company_type_position', 'after') %}
+{% if company_type_position == 'before' %}
+  {% set full_company_name = company_type ~ company_name %}
+{% else %}
+  {% set full_company_name = company_name ~ company_type %}
+{% endif %}
 {% set address = data.get('address', '') ~ data.get('address_detail', '') %}
 {% set members = data.get('members', []) %}
 {% set purposes = data.get('purposes', []) %}
@@ -114,7 +120,7 @@
 <!-- 定款本文 -->
 <div class="teikan-doc">
   <div class="teikan-title">定　　款</div>
-  <div class="teikan-company">{{ company_type }}{{ company_name }}</div>
+  <div class="teikan-company">{{ full_company_name }}</div>
 
   {# ========== 合同会社 ========== #}
   {% if company_type == '合同会社' %}
@@ -124,7 +130,7 @@
   <div class="teikan-article">
     <div class="teikan-article-header">第１条（商号）</div>
     <div class="teikan-article-body">
-      <p>当会社は、合同会社{{ company_name }}と称する。</p>
+      <p>当会社は、{{ full_company_name }}と称する。</p>
     </div>
   </div>
 
@@ -255,7 +261,7 @@
 
   <div class="teikan-article">
     <div class="teikan-article-header">第１条（商号）</div>
-    <div class="teikan-article-body"><p>当会社は、株式会社{{ company_name }}と称する。</p></div>
+    <div class="teikan-article-body"><p>当会社は、{{ full_company_name }}と称する。</p></div>
   </div>
 
   <div class="teikan-article">
@@ -405,7 +411,7 @@
 
   <div class="teikan-article">
     <div class="teikan-article-header">第１条（名称）</div>
-    <div class="teikan-article-body"><p>当法人は、一般社団法人{{ company_name }}と称する。</p></div>
+    <div class="teikan-article-body"><p>当法人は、{{ full_company_name }}と称する。</p></div>
   </div>
 
   <div class="teikan-article">
