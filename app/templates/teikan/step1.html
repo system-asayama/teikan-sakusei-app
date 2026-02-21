@@ -11,7 +11,7 @@
     </div>
     <div class="step-item">
       <span class="step-num">2</span>
-      <span>社員情報</span>
+      <span>{% if data.get('company_type') == '株式会社' %}株主情報{% elif data.get('company_type') == '一般社団法人' %}理事情報{% else %}社員情報{% endif %}</span>
     </div>
     <div class="step-item">
       <span class="step-num">3</span>
@@ -31,51 +31,60 @@
 
 {% block content %}
 <h1 class="section-title">基本情報を入力しましょう</h1>
-<p class="section-subtitle">法人形態・商号・本店所在地・登記方法を設定します。</p>
+<p class="section-subtitle">商号・本店所在地・登記方法を設定します。</p>
 
 <form method="POST" action="{{ url_for('teikan.step1') }}" id="step1-form">
 
-  <!-- 法人形態 -->
+  <!-- 法人形態（表示のみ・変更不可） -->
   <div class="form-group">
-    <label class="form-label">法人形態 <span class="required">必須</span></label>
-    <div class="radio-group">
-      <label class="radio-item {% if data.get('company_type', '合同会社') == '合同会社' %}selected{% endif %}">
-        <input type="radio" name="company_type" value="合同会社"
-          {% if data.get('company_type', '合同会社') == '合同会社' %}checked{% endif %}
-          onchange="updateRadio(this)">
-        <div>
-          <div class="radio-label">合同会社（LLC）</div>
-          <div class="radio-desc">設立費用が安く、柔軟な経営が可能。スタートアップに人気</div>
-        </div>
-      </label>
-      <label class="radio-item {% if data.get('company_type') == '株式会社' %}selected{% endif %}">
-        <input type="radio" name="company_type" value="株式会社"
-          {% if data.get('company_type') == '株式会社' %}checked{% endif %}
-          onchange="updateRadio(this)">
-        <div>
-          <div class="radio-label">株式会社</div>
-          <div class="radio-desc">社会的信用度が高く、資金調達がしやすい</div>
-        </div>
-      </label>
+    <label class="form-label">法人形態</label>
+    <div style="display:flex;align-items:center;justify-content:space-between;background:#f5f7fa;border:1px solid #e0e0e0;border-radius:10px;padding:14px 16px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        {% if data.get('company_type') == '株式会社' %}
+        <span style="font-size:22px;">📈</span>
+        {% elif data.get('company_type') == '一般社団法人' %}
+        <span style="font-size:22px;">🌐</span>
+        {% else %}
+        <span style="font-size:22px;">🏢</span>
+        {% endif %}
+        <span style="font-size:16px;font-weight:700;color:#1a1a2e;">{{ data.get('company_type', '合同会社') }}</span>
+      </div>
+      <a href="{{ url_for('teikan.select_type') }}" style="font-size:12px;color:#4A90E2;text-decoration:none;">変更</a>
     </div>
+    <input type="hidden" name="company_type" value="{{ data.get('company_type', '合同会社') }}">
   </div>
 
   <!-- 商号 -->
   <div class="form-group">
-    <label class="form-label" for="company_name">商号（会社名）<span class="required">必須</span></label>
+    <label class="form-label" for="company_name">
+      {% if data.get('company_type') == '一般社団法人' %}法人名{% else %}商号（会社名）{% endif %}
+      <span class="required">必須</span>
+    </label>
     <input type="text" id="company_name" name="company_name" class="form-control"
-      placeholder="例：megi" value="{{ data.get('company_name', '') }}" required>
-    <p class="form-hint">「合同会社」の文字は自動で付与されます。商号のみ入力してください。</p>
+      placeholder="{% if data.get('company_type') == '一般社団法人' %}例：〇〇協会{% else %}例：megi{% endif %}"
+      value="{{ data.get('company_name', '') }}" required>
+    <p class="form-hint">
+      {% if data.get('company_type') == '株式会社' %}
+      「株式会社」の文字は自動で付与されます。商号のみ入力してください。
+      {% elif data.get('company_type') == '一般社団法人' %}
+      「一般社団法人」の文字は自動で付与されます。法人名のみ入力してください。
+      {% else %}
+      「合同会社」の文字は自動で付与されます。商号のみ入力してください。
+      {% endif %}
+    </p>
   </div>
 
   <!-- 商号（フリガナ） -->
   <div class="form-group">
-    <label class="form-label" for="company_name_kana">商号フリガナ <span class="optional">任意</span></label>
+    <label class="form-label" for="company_name_kana">
+      {% if data.get('company_type') == '一般社団法人' %}法人名フリガナ{% else %}商号フリガナ{% endif %}
+      <span class="optional">任意</span>
+    </label>
     <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
       placeholder="例：メギ" value="{{ data.get('company_name_kana', '') }}">
   </div>
 
-  <!-- 法務局への登記申請方法 -->
+  <!-- 法務局への登記申請方法（一般社団法人は登記方法も必要） -->
   <div class="form-group">
     <label class="form-label">法務局に登記申請する方法 <span class="required">必須</span></label>
     <div class="radio-group">
@@ -109,7 +118,10 @@
   </div>
 
   <div class="form-group">
-    <label class="form-label" for="address">本店所在地（都道府県〜番地）<span class="required">必須</span></label>
+    <label class="form-label" for="address">
+      {% if data.get('company_type') == '一般社団法人' %}主たる事務所の所在地{% else %}本店所在地（都道府県〜番地）{% endif %}
+      <span class="required">必須</span>
+    </label>
     <input type="text" id="address" name="address" class="form-control"
       placeholder="例：岡山県加賀郡吉備中央町上加茂1648" value="{{ data.get('address', '') }}" required>
     <p class="form-hint">定款には「最小行政区画」（市区町村）のみ記載することも可能です</p>
@@ -133,9 +145,13 @@
 {% block scripts %}
 <script>
 function updateRadio(input) {
-  document.querySelectorAll('.radio-item').forEach(item => {
-    item.classList.remove('selected');
-  });
+  // 同じradio-groupの中のradio-itemのみselectedを切り替える
+  const group = input.closest('.radio-group');
+  if (group) {
+    group.querySelectorAll('.radio-item').forEach(item => {
+      item.classList.remove('selected');
+    });
+  }
   input.closest('.radio-item').classList.add('selected');
 }
 

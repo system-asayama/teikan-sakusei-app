@@ -1,6 +1,27 @@
 {% extends 'teikan/base.html' %}
 
-{% block title %}社員・出資情報の入力 - 定款作成{% endblock %}
+{% set company_type = data.get('company_type', '合同会社') %}
+{% if company_type == '株式会社' %}
+  {% set member_label = '発起人' %}
+  {% set rep_label = '代表取締役' %}
+  {% set contrib_label = '引受株式数・払込金額' %}
+  {% set step2_title = '発起人・出資情報' %}
+  {% set step2_subtitle = '発起人の情報と出資金・資本金を設定します。' %}
+{% elif company_type == '一般社団法人' %}
+  {% set member_label = '設立時社員' %}
+  {% set rep_label = '代表理事' %}
+  {% set contrib_label = '入会金（任意）' %}
+  {% set step2_title = '設立時社員・理事情報' %}
+  {% set step2_subtitle = '設立時社員と理事の情報を設定します。' %}
+{% else %}
+  {% set member_label = '社員' %}
+  {% set rep_label = '代表社員' %}
+  {% set contrib_label = '出資金額' %}
+  {% set step2_title = '社員・出資情報' %}
+  {% set step2_subtitle = '代表社員の情報と出資金・資本金を設定します。' %}
+{% endif %}
+
+{% block title %}{{ step2_title }}の入力 - 定款作成{% endblock %}
 
 {% block step_indicator %}
 <nav class="step-indicator">
@@ -11,7 +32,7 @@
     </div>
     <div class="step-item active">
       <span class="step-num">2</span>
-      <span>社員情報</span>
+      <span>{{ step2_title }}</span>
     </div>
     <div class="step-item">
       <span class="step-num">3</span>
@@ -30,13 +51,13 @@
 {% endblock %}
 
 {% block content %}
-<h1 class="section-title">社員・出資情報を入力しましょう</h1>
-<p class="section-subtitle">代表社員の情報と出資金・資本金を設定します。</p>
+<h1 class="section-title">{{ step2_title }}を入力しましょう</h1>
+<p class="section-subtitle">{{ step2_subtitle }}</p>
 
 <form method="POST" action="{{ url_for('teikan.step2') }}" id="step2-form">
   <input type="hidden" name="member_count" id="member_count" value="{{ data.get('members', [{}])|length or 1 }}">
 
-  <!-- 社員リスト -->
+  <!-- メンバーリスト -->
   <div id="members-container">
     {% set members = data.get('members', [{}]) %}
     {% if not members %}{% set members = [{}] %}{% endif %}
@@ -44,8 +65,10 @@
     <div class="member-card" id="member-{{ i }}">
       <div class="member-card-header">
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-          <span class="tag tag-blue" id="rep-badge-{{ i }}" style="{{ 'display:none' if not member.get('is_representative') and i > 0 else '' }}">代表社員</span>
+          <span class="tag tag-blue" id="rep-badge-{{ i }}" style="{{ 'display:none' if not member.get('is_representative') and i > 0 else '' }}">{{ rep_label }}</span>
+          {% if company_type != '一般社団法人' %}
           <span class="tag tag-dark" id="contrib-badge-{{ i }}">出資金: <span id="contrib-display-{{ i }}">{{ member.get('contribution', '0') }}</span>円</span>
+          {% endif %}
         </div>
         {% if i > 0 %}
         <button type="button" class="btn btn-danger" onclick="removeMember({{ i }})">削除</button>
@@ -79,14 +102,18 @@
           value="{{ member.get('address', '') }}" required>
       </div>
 
+      {% if company_type != '一般社団法人' %}
       <div class="form-group">
         <label class="form-label">出資金額（円）<span class="required">必須</span></label>
         <input type="number" name="contribution_{{ i }}" class="form-control"
           placeholder="例：200000" value="{{ member.get('contribution', '') }}"
           min="1" required
           oninput="updateContribDisplay(this, {{ i }})">
-        <p class="form-hint">この社員が出資する金額を入力してください</p>
+        <p class="form-hint">この{{ member_label }}が出資する金額を入力してください</p>
       </div>
+      {% else %}
+      <input type="hidden" name="contribution_{{ i }}" value="0">
+      {% endif %}
 
       <div class="form-group">
         <label class="checkbox-item {% if member.get('is_representative') or i == 0 %}selected{% endif %}"
@@ -95,8 +122,8 @@
             {% if member.get('is_representative') or i == 0 %}checked{% endif %}
             onchange="updateCheckbox(this)">
           <div>
-            <div class="checkbox-label">代表社員にする</div>
-            <div class="checkbox-desc">この社員を会社の代表者として設定します</div>
+            <div class="checkbox-label">{{ rep_label }}にする</div>
+            <div class="checkbox-desc">この{{ member_label }}を代表者として設定します</div>
           </div>
         </label>
       </div>
@@ -107,19 +134,23 @@
   <!-- メンバー追加ボタン -->
   <div style="text-align:center;margin-bottom:24px;">
     <button type="button" class="btn btn-outline-primary" onclick="addMember()" style="width:auto;padding:10px 24px;">
-      + メンバーを追加
+      + {{ member_label }}を追加
     </button>
   </div>
 
   <hr class="divider">
 
+  {% if company_type != '一般社団法人' %}
   <!-- 資本金 -->
   <div class="form-group">
     <label class="form-label" for="capital">資本金（円）<span class="required">必須</span></label>
     <input type="number" id="capital" name="capital" class="form-control"
       placeholder="例：200000" value="{{ data.get('capital', '') }}" min="1" required>
-    <p class="form-hint">通常、社員の出資金の合計と同額になります</p>
+    <p class="form-hint">通常、{{ member_label }}の出資金の合計と同額になります</p>
   </div>
+  {% else %}
+  <input type="hidden" name="capital" value="0">
+  {% endif %}
 
   <!-- 連絡先電話番号 -->
   <div class="form-group">
@@ -140,6 +171,9 @@
 {% block scripts %}
 <script>
 let memberCount = {{ data.get('members', [{}])|length or 1 }};
+const companyType = "{{ company_type }}";
+const repLabel = "{{ rep_label }}";
+const memberLabel = "{{ member_label }}";
 
 function updateCheckbox(input) {
   const item = input.closest('.checkbox-item');
@@ -167,39 +201,48 @@ function addMember() {
   const div = document.createElement('div');
   div.className = 'member-card';
   div.id = `member-${i}`;
+
+  const contribField = companyType !== '一般社団法人' ? `
+    <div class="form-group">
+      <label class="form-label">出資金額（円）<span class="required" style="color:#e53935;font-size:11px;margin-left:4px;">必須</span></label>
+      <input type="number" name="contribution_${i}" class="form-control" placeholder="例：100000" min="1" required oninput="updateContribDisplay(this, ${i})">
+    </div>
+  ` : `<input type="hidden" name="contribution_${i}" value="0">`;
+
+  const contribBadge = companyType !== '一般社団法人' ? `
+    <span class="tag tag-dark">出資金: <span id="contrib-display-${i}">0</span>円</span>
+  ` : '';
+
   div.innerHTML = `
     <div class="member-card-header">
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <span class="tag tag-dark">出資金: <span id="contrib-display-${i}">0</span>円</span>
+        ${contribBadge}
       </div>
       <button type="button" class="btn btn-danger" onclick="removeMember(${i})">削除</button>
     </div>
     <div class="form-group">
-      <label class="form-label">氏名 <span class="required">必須</span></label>
+      <label class="form-label">氏名 <span class="required" style="color:#e53935;font-size:11px;margin-left:4px;">必須</span></label>
       <input type="text" name="member_name_${i}" class="form-control" placeholder="例：田中 太郎" required>
     </div>
     <div class="form-group">
-      <label class="form-label">氏名フリガナ <span class="optional">任意</span></label>
+      <label class="form-label">氏名フリガナ <span class="optional" style="color:#888;font-size:11px;margin-left:4px;">任意</span></label>
       <input type="text" name="member_name_kana_${i}" class="form-control" placeholder="例：タナカ タロウ">
     </div>
     <div class="form-group">
-      <label class="form-label">郵便番号 <span class="optional">任意</span></label>
+      <label class="form-label">郵便番号 <span class="optional" style="color:#888;font-size:11px;margin-left:4px;">任意</span></label>
       <input type="text" name="member_postal_${i}" class="form-control" placeholder="例：100-0001" style="max-width:180px;" oninput="lookupMemberPostal(this, ${i})">
     </div>
     <div class="form-group">
-      <label class="form-label">住所 <span class="required">必須</span></label>
+      <label class="form-label">住所 <span class="required" style="color:#e53935;font-size:11px;margin-left:4px;">必須</span></label>
       <input type="text" name="member_address_${i}" id="member-addr-${i}" class="form-control" placeholder="例：東京都千代田区千代田1-1" required>
     </div>
-    <div class="form-group">
-      <label class="form-label">出資金額（円）<span class="required">必須</span></label>
-      <input type="number" name="contribution_${i}" class="form-control" placeholder="例：100000" min="1" required oninput="updateContribDisplay(this, ${i})">
-    </div>
+    ${contribField}
     <div class="form-group">
       <label class="checkbox-item" style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;">
         <input type="checkbox" name="is_representative_${i}" onchange="updateCheckbox(this)">
         <div>
-          <div class="checkbox-label">代表社員にする</div>
-          <div class="checkbox-desc">この社員を会社の代表者として設定します</div>
+          <div class="checkbox-label">${repLabel}にする</div>
+          <div class="checkbox-desc">この${memberLabel}を代表者として設定します</div>
         </div>
       </label>
     </div>
