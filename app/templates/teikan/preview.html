@@ -563,21 +563,38 @@
 </div>
 
 <!-- 下部アクション -->
-<div class="no-print" style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;">
+<div class="no-print" style="margin-top:24px;">
   {% if readonly and doc %}
-  <a href="{{ url_for('teikan.history_download', doc_id=doc.id) }}" class="btn btn-primary" style="text-decoration:none;">
-    ⬇️ PDFダウンロード
-  </a>
-  <a href="{{ url_for('teikan.history') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;padding:13px 24px;">
-    ← 一覧に戻る
-  </a>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a href="{{ url_for('teikan.history_download', doc_id=doc.id) }}" class="btn btn-primary" style="text-decoration:none;">
+      ⬇️ PDFダウンロード
+    </a>
+    <a href="{{ url_for('teikan.history') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;padding:13px 24px;">
+      ← 一覧に戻る
+    </a>
+  </div>
   {% else %}
-  <a href="{{ url_for('teikan.download_pdf') }}" class="btn btn-primary" style="text-decoration:none;">
-    ⬇️ PDFダウンロード
+  <!-- 3段階フローのナビゲーション -->
+  <div style="background:#e3f2fd;border:1px solid #2196f3;border-radius:10px;padding:16px;margin-bottom:16px;">
+    <div style="font-size:13px;color:#1565c0;font-weight:700;margin-bottom:6px;">📄 ステップ 2：定欻作成</div>
+    <div style="font-size:12px;color:#1976d2;margin-bottom:12px;">定欻の内容を確認し、PDFをダウンロードしてください。確認後、登記書類作成へ進むことができます。</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="{{ url_for('teikan.download_pdf') }}" class="btn btn-primary" style="text-decoration:none;">
+        ⬇️ 定欻 PDFをダウンロード
+      </a>
+      <a href="{{ url_for('teikan.confirm') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;padding:13px 24px;">
+        ← 確認画面に戻る
+      </a>
+    </div>
+  </div>
+  <a href="{{ url_for('teikan.registration_docs') }}" class="btn" style="text-decoration:none;background:#1a1a2e;color:#fff;font-size:16px;padding:16px;margin-bottom:12px;">
+    次のステップへ：登記書類を作成する →
   </a>
-  <a href="{{ url_for('teikan.confirm') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;padding:13px 24px;">
-    ← 確認画面に戻る
-  </a>
+  <form method="POST" action="{{ url_for('teikan.save') }}" style="margin-bottom:12px;">
+    <button type="submit" class="btn" style="background:#4A90E2;color:#fff;width:100%;border:none;cursor:pointer;padding:12px;">
+      💾 定欻を保存する
+    </button>
+  </form>
   {% endif %}
 </div>
 {% endblock %}

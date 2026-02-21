@@ -266,18 +266,25 @@
 
 <!-- アクションボタン -->
 <div style="margin-top:28px;">
-  {% if data.get('company_name') %}
-  <a href="{{ url_for('teikan.preview') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;">
-    📄 定款をプレビューする
+  {% set required_ok = data.get('company_name') and data.get('address') and data.get('members') and data.get('purposes') and data.get('fiscal_end_month') %}
+  {% if required_ok %}
+  <!-- 必須項目が全て入力済みの場合 -->
+  <div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+    <div style="font-size:13px;color:#2e7d32;font-weight:700;margin-bottom:4px;">✅ 入力内容の確認完了</div>
+    <div style="font-size:12px;color:#388e3c;">次のステップへ進んで定欻を作成してください。</div>
+  </div>
+  <a href="{{ url_for('teikan.preview') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;font-size:16px;padding:16px;">
+    次のステップへ：定欻を作成する →
   </a>
-  <a href="{{ url_for('teikan.download_pdf') }}" class="btn btn-success" style="text-decoration:none;margin-bottom:12px;">
-    ⬇️ 定款PDFをダウンロード
+  {% elif data.get('company_name') %}
+  <!-- 一部入力済みの場合 -->
+  <div style="background:#fff3e0;border:1px solid #ff9800;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+    <div style="font-size:13px;color:#e65100;font-weight:700;margin-bottom:4px;">⚠️ 未入力の項目があります</div>
+    <div style="font-size:12px;color:#bf360c;">全ての項目を入力すると定欻作成へ進めます。</div>
+  </div>
+  <a href="{{ url_for('teikan.preview') }}" class="btn" style="text-decoration:none;margin-bottom:12px;background:#bbb;color:#fff;">
+    定欻をプレビュー（未入力項目あり）
   </a>
-  <form method="POST" action="{{ url_for('teikan.save') }}" style="margin-bottom:12px;">
-    <button type="submit" class="btn" style="background:#1a1a2e;color:#fff;width:100%;border:none;cursor:pointer;">
-      💾 定款を保存する
-    </button>
-  </form>
   {% else %}
   {% if data.get('company_type') %}
   <a href="{{ url_for('teikan.step1') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;">
