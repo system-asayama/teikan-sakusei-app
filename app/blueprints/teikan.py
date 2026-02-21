@@ -126,6 +126,7 @@ def step1():
         data['address_detail'] = request.form.get('address_detail', '')
         if request.form.get('capital_from_step1'):
             data['capital'] = request.form.get('capital', '0')
+        data['phone'] = request.form.get('phone', '')
         save_session_data(data)
         autosave_draft(data)
         return redirect(url_for('teikan.confirm'))
@@ -155,7 +156,6 @@ def step2():
                 members.append(member)
 
         data['members'] = members
-        data['phone'] = request.form.get('phone', '')
         save_session_data(data)
         autosave_draft(data)
         return redirect(url_for('teikan.confirm'))

@@ -138,13 +138,6 @@
     </button>
   </div>
 
-  <!-- 連絡先電話番号 -->
-  <div class="form-group">
-    <label class="form-label" for="phone">連絡先電話番号 <span class="optional">任意</span></label>
-    <input type="tel" id="phone" name="phone" class="form-control"
-      placeholder="例：070-5357-1155" value="{{ data.get('phone', '') }}">
-  </div>
-
   <!-- ナビゲーション -->
   <div class="page-nav">
     <a href="{{ url_for('teikan.confirm') }}" class="btn btn-secondary" style="text-decoration:none;">← 確認画面に戻る</a>
