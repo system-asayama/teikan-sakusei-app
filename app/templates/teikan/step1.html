@@ -69,7 +69,7 @@
       <span class="required">必須</span>
     </label>
     <input type="text" id="company_name" name="company_name" class="form-control"
-      placeholder="{% if data.get('company_type') == '一般社団法人' %}例：○○協会{% else %}例：アイウエオ{% endif %}"      value="{{ data.get('company_name', '') }}" required>
+      placeholder="{% if data.get('company_type') == '一般社団法人' %}例：日本支援ネットワーク{% else %}例：サクラコンサルティング{% endif %}"      value="{{ data.get('company_name', '') }}" required>
     <p class="form-hint">
       {% if data.get('company_type') == '株式会社' %}
       「株式会社」の文字は自動で付与されます。商号のみ入力してください。
@@ -88,7 +88,7 @@
       <span class="optional">任意</span>
     </label>
     <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
-      placeholder="例：アイウエオ" value="{{ data.get('company_name_kana', '') }}">
+      placeholder="例：サクラコンサルティング" value="{{ data.get('company_name_kana', '') }}">
   </div>
 
   <!-- 資本金（一般社団法人以外） -->
