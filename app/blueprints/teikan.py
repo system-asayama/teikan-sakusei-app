@@ -82,6 +82,16 @@ def index():
     return render_template('teikan/index.html')
 
 
+@bp.route('/new')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def new_document():
+    """新規定款作成：セッションをクリアして確認画面へ"""
+    session.pop('teikan_data', None)
+    session.pop('teikan_draft_id', None)
+    session.modified = True
+    return redirect(url_for('teikan.confirm'))
+
+
 @bp.route('/step1', methods=['GET', 'POST'])
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
 def step1():

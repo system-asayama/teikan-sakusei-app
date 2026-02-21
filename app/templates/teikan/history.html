@@ -125,7 +125,7 @@
     <h1 class="section-title" style="margin-bottom:4px;">作成済み定款一覧</h1>
     <p style="font-size:13px;color:#888;margin:0;">保存した定款の確認・再ダウンロードができます</p>
   </div>
-  <a href="{{ url_for('teikan.confirm') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:10px 20px;">
+  <a href="{{ url_for('teikan.new_document') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:10px 20px;">
     ＋ 新しい定款を作成
   </a>
 </div>
@@ -186,7 +186,7 @@
   <div class="empty-state">
     <div class="empty-icon">📋</div>
     <p>まだ定款が保存されていません。</p>
-    <a href="{{ url_for('teikan.confirm') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:12px 24px;">
+    <a href="{{ url_for('teikan.new_document') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:12px 24px;">
       最初の定款を作成する
     </a>
   </div>
