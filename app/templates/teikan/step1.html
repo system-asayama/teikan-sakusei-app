@@ -31,7 +31,13 @@
 
 {% block content %}
 <h1 class="section-title">基本情報を入力しましょう</h1>
-<p class="section-subtitle">商号・本店所在地・登記方法を設定します。</p>
+<p class="section-subtitle">
+  {% if data.get('company_type') == '一般社団法人' %}
+  法人名・主たる事務所の所在地を設定します。
+  {% else %}
+  商号・本店所在地を設定します。
+  {% endif %}
+</p>
 
 <form method="POST" action="{{ url_for('teikan.step1') }}" id="step1-form">
 
@@ -52,6 +58,7 @@
       <a href="{{ url_for('teikan.select_type') }}" style="font-size:12px;color:#4A90E2;text-decoration:none;">変更</a>
     </div>
     <input type="hidden" name="company_type" value="{{ data.get('company_type', '合同会社') }}">
+    <input type="hidden" name="registration_method" value="{{ data.get('registration_method', '法務局に直接提出') }}">
   </div>
 
   <!-- 商号 -->
@@ -82,31 +89,6 @@
     </label>
     <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
       placeholder="例：メギ" value="{{ data.get('company_name_kana', '') }}">
-  </div>
-
-  <!-- 法務局への登記申請方法（一般社団法人は登記方法も必要） -->
-  <div class="form-group">
-    <label class="form-label">法務局に登記申請する方法 <span class="required">必須</span></label>
-    <div class="radio-group">
-      <label class="radio-item {% if data.get('registration_method', '法務局に直接提出') == '法務局に直接提出' %}selected{% endif %}">
-        <input type="radio" name="registration_method" value="法務局に直接提出"
-          {% if data.get('registration_method', '法務局に直接提出') == '法務局に直接提出' %}checked{% endif %}
-          onchange="updateRadio(this)">
-        <div>
-          <div class="radio-label">法務局に直接提出</div>
-          <div class="radio-desc">書類を印刷して法務局の窓口に持参する</div>
-        </div>
-      </label>
-      <label class="radio-item {% if data.get('registration_method') == 'オンライン申請' %}selected{% endif %}">
-        <input type="radio" name="registration_method" value="オンライン申請"
-          {% if data.get('registration_method') == 'オンライン申請' %}checked{% endif %}
-          onchange="updateRadio(this)">
-        <div>
-          <div class="radio-label">オンライン申請（登記・供託オンライン申請システム）</div>
-          <div class="radio-desc">PCから電子申請する。電子証明書が必要</div>
-        </div>
-      </label>
-    </div>
   </div>
 
   <!-- 本店所在地 -->
@@ -144,17 +126,6 @@
 
 {% block scripts %}
 <script>
-function updateRadio(input) {
-  // 同じradio-groupの中のradio-itemのみselectedを切り替える
-  const group = input.closest('.radio-group');
-  if (group) {
-    group.querySelectorAll('.radio-item').forEach(item => {
-      item.classList.remove('selected');
-    });
-  }
-  input.closest('.radio-item').classList.add('selected');
-}
-
 async function lookupPostal(value) {
   const cleaned = value.replace(/[^0-9]/g, '');
   if (cleaned.length === 7) {
