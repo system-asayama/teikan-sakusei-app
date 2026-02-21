@@ -62,6 +62,29 @@
     <input type="hidden" name="capital_from_step1" value="1">
   </div>
 
+  {% if data.get('company_type') != '一般社団法人' %}
+  <!-- 法人種別の前後選択 -->
+  <div class="form-group">
+    <label class="form-label">法人種別の位置 <span class="required">必須</span></label>
+    <p class="form-hint" style="margin-bottom:10px;">商号に対して「{{ data.get('company_type', '合同会社') }}」を前後どちらに付けるか選択してください。</p>
+    {% set pos = data.get('company_type_position', 'before') %}
+    <label class="checkbox-item {% if pos == 'before' %}selected{% endif %}" style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+      <input type="radio" name="company_type_position" value="before" {% if pos == 'before' %}checked{% endif %} onchange="updatePreview()">
+      <div>
+        <div class="checkbox-label" id="preview-before">前に付ける（例：{{ data.get('company_type', '合同会社') }}○○商事）</div>
+      </div>
+    </label>
+    <label class="checkbox-item {% if pos == 'after' %}selected{% endif %}" style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;">
+      <input type="radio" name="company_type_position" value="after" {% if pos == 'after' %}checked{% endif %} onchange="updatePreview()">
+      <div>
+        <div class="checkbox-label" id="preview-after">後ろに付ける（例：○○商事{{ data.get('company_type', '合同会社') }}）</div>
+      </div>
+    </label>
+  </div>
+  {% else %}
+  <input type="hidden" name="company_type_position" value="before">
+  {% endif %}
+
   <!-- 商号 -->
   <div class="form-group">
     <label class="form-label" for="company_name">
@@ -90,29 +113,6 @@
     <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
       placeholder="例：サクラコンサルティング" value="{{ data.get('company_name_kana', '') }}">
   </div>
-
-  {% if data.get('company_type') != '一般社団法人' %}
-  <!-- 法人種別の前後選択 -->
-  <div class="form-group">
-    <label class="form-label">法人種別の位置 <span class="required">必須</span></label>
-    <p class="form-hint" style="margin-bottom:10px;">商号に対して「{{ data.get('company_type', '合同会社') }}」を前後どちらに付けるか選択してください。</p>
-    {% set pos = data.get('company_type_position', 'before') %}
-    <label class="checkbox-item {% if pos == 'before' %}selected{% endif %}" style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;gap:10px;">
-      <input type="radio" name="company_type_position" value="before" {% if pos == 'before' %}checked{% endif %} onchange="updatePreview()">
-      <div>
-        <div class="checkbox-label" id="preview-before">前に付ける（例：{{ data.get('company_type', '合同会社') }}○○商事）</div>
-      </div>
-    </label>
-    <label class="checkbox-item {% if pos == 'after' %}selected{% endif %}" style="border:1.5px solid #d0d5dd;border-radius:8px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;">
-      <input type="radio" name="company_type_position" value="after" {% if pos == 'after' %}checked{% endif %} onchange="updatePreview()">
-      <div>
-        <div class="checkbox-label" id="preview-after">後ろに付ける（例：○○商事{{ data.get('company_type', '合同会社') }}）</div>
-      </div>
-    </label>
-  </div>
-  {% else %}
-  <input type="hidden" name="company_type_position" value="before">
-  {% endif %}
 
   <!-- 資本金（一般社団法人以外） -->
   {% if data.get('company_type') != '一般社団法人' %}
