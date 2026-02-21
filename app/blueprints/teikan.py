@@ -475,11 +475,22 @@ def generate_teikan_pdf(data):
     from reportlab.pdfbase.ttfonts import TTFont
     import os
 
-    # 日本語フォントの設定
-    jp_font_path = '/usr/share/fonts/truetype/fonts-japanese-gothic.ttf'
-    if os.path.exists(jp_font_path):
+    # 日本語フォントの設定（リポジトリ内 → システムの順に探索）
+    font_candidates = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'fonts', 'ipag.ttf'),
+        '/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf',
+        '/usr/share/fonts/truetype/fonts-japanese-gothic.ttf',
+    ]
+    jp_font_path = None
+    for candidate in font_candidates:
+        if os.path.exists(candidate):
+            jp_font_path = candidate
+            break
+
+    if jp_font_path:
         try:
-            pdfmetrics.registerFont(TTFont('JapaneseGothic', jp_font_path))
+            if 'JapaneseGothic' not in pdfmetrics.getRegisteredFontNames():
+                pdfmetrics.registerFont(TTFont('JapaneseGothic', jp_font_path))
             font_name = 'JapaneseGothic'
             font_bold = 'JapaneseGothic'
         except Exception:
@@ -1012,8 +1023,19 @@ def _setup_pdf_canvas():
     from reportlab.pdfbase.ttfonts import TTFont
     import os
 
-    jp_font_path = '/usr/share/fonts/truetype/fonts-japanese-gothic.ttf'
-    if os.path.exists(jp_font_path):
+    # フォントパスの候補（リポジトリ内 → システム）
+    font_candidates = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'fonts', 'ipag.ttf'),
+        '/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf',
+        '/usr/share/fonts/truetype/fonts-japanese-gothic.ttf',
+    ]
+    jp_font_path = None
+    for candidate in font_candidates:
+        if os.path.exists(candidate):
+            jp_font_path = candidate
+            break
+
+    if jp_font_path:
         try:
             if 'JapaneseGothic' not in pdfmetrics.getRegisteredFontNames():
                 pdfmetrics.registerFont(TTFont('JapaneseGothic', jp_font_path))
