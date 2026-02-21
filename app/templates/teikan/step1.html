@@ -69,8 +69,7 @@
       <span class="required">必須</span>
     </label>
     <input type="text" id="company_name" name="company_name" class="form-control"
-      placeholder="{% if data.get('company_type') == '一般社団法人' %}例：〇〇協会{% else %}例：megi{% endif %}"
-      value="{{ data.get('company_name', '') }}" required>
+      placeholder="{% if data.get('company_type') == '一般社団法人' %}例：○○協会{% else %}例：アイウエオ{% endif %}"      value="{{ data.get('company_name', '') }}" required>
     <p class="form-hint">
       {% if data.get('company_type') == '株式会社' %}
       「株式会社」の文字は自動で付与されます。商号のみ入力してください。
@@ -89,7 +88,7 @@
       <span class="optional">任意</span>
     </label>
     <input type="text" id="company_name_kana" name="company_name_kana" class="form-control"
-      placeholder="例：メギ" value="{{ data.get('company_name_kana', '') }}">
+      placeholder="例：アイウエオ" value="{{ data.get('company_name_kana', '') }}">
   </div>
 
   <!-- 資本金（一般社団法人以外） -->
@@ -97,7 +96,7 @@
   <div class="form-group">
     <label class="form-label" for="capital">資本金（円）<span class="required">必須</span></label>
     <input type="number" id="capital" name="capital" class="form-control"
-      placeholder="例：200000" value="{{ data.get('capital', '') }}" min="1" required>
+      placeholder="例：1000000" value="{{ data.get('capital', '') }}" min="1" required>
     <p class="form-hint">社員の出資金の合計と同額になります</p>
   </div>
   {% else %}
@@ -108,7 +107,7 @@
   <div class="form-group">
     <label class="form-label" for="postal_code">郵便番号 <span class="required">必須</span></label>
     <input type="text" id="postal_code" name="postal_code" class="form-control"
-      placeholder="例：709-2341" value="{{ data.get('postal_code', '') }}"
+      placeholder="例：100-0001" value="{{ data.get('postal_code', '') }}"
       style="max-width:180px;" oninput="lookupPostal(this.value)">
   </div>
 
@@ -118,21 +117,21 @@
       <span class="required">必須</span>
     </label>
     <input type="text" id="address" name="address" class="form-control"
-      placeholder="例：岡山県加賀郡吉備中央町上加茂1648" value="{{ data.get('address', '') }}" required>
+      placeholder="例：東京都千代田区千代田１－１" value="{{ data.get('address', '') }}" required>
     <p class="form-hint">定款には「最小行政区画」（市区町村）のみ記載することも可能です</p>
   </div>
 
   <div class="form-group">
     <label class="form-label" for="address_detail">建物名・部屋番号 <span class="optional">任意</span></label>
     <input type="text" id="address_detail" name="address_detail" class="form-control"
-      placeholder="例：○○ビル3階" value="{{ data.get('address_detail', '') }}">
+      placeholder="例：○○ビル101号" value="{{ data.get('address_detail', '') }}">
   </div>
 
   <!-- 連絡先電話番号 -->
   <div class="form-group">
     <label class="form-label" for="phone">連絡先電話番号 <span class="optional">任意</span></label>
     <input type="tel" id="phone" name="phone" class="form-control"
-      placeholder="例：070-5357-1155" value="{{ data.get('phone', '') }}">
+      placeholder="例：03-0000-0000" value="{{ data.get('phone', '') }}">
   </div>
 
   <!-- ナビゲーション -->

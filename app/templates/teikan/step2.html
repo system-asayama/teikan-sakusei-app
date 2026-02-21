@@ -78,19 +78,19 @@
       <div class="form-group">
         <label class="form-label">氏名 <span class="required">必須</span></label>
         <input type="text" name="member_name_{{ i }}" class="form-control"
-          placeholder="例：山崎 浩樹" value="{{ member.get('name', '') }}" required>
+          placeholder="例：山田 太郎" value="{{ member.get('name', '') }}" required>
       </div>
 
       <div class="form-group">
         <label class="form-label">氏名フリガナ <span class="optional">任意</span></label>
         <input type="text" name="member_name_kana_{{ i }}" class="form-control"
-          placeholder="例：ヤマザキ ヒロキ" value="{{ member.get('name_kana', '') }}">
+          placeholder="例：ヤマダ タロウ" value="{{ member.get('name_kana', '') }}">
       </div>
 
       <div class="form-group">
         <label class="form-label">郵便番号 <span class="optional">任意</span></label>
         <input type="text" name="member_postal_{{ i }}" class="form-control"
-          placeholder="例：709-2341" value="{{ member.get('postal_code', '') }}"
+          placeholder="例：100-0001" value="{{ member.get('postal_code', '') }}"
           style="max-width:180px;"
           oninput="lookupMemberPostal(this, {{ i }})">
       </div>
@@ -98,14 +98,14 @@
       <div class="form-group">
         <label class="form-label">住所 <span class="required">必須</span></label>
         <input type="text" name="member_address_{{ i }}" id="member-addr-{{ i }}" class="form-control"
-          placeholder="例：709-2341 岡山県加賀郡吉備中央町上加あ1684"
+          placeholder="例：東京都千代田区千代田１－１"
           value="{{ member.get('address', '') }}" required>
       </div>
 
       <div class="form-group">
         <label class="form-label">連絡先電話番号 <span class="optional">任意</span></label>
         <input type="tel" name="member_phone_{{ i }}" class="form-control"
-          placeholder="例：070-5357-1155" value="{{ member.get('phone', '') }}">
+          placeholder="例：090-0000-0000" value="{{ member.get('phone', '') }}">
       </div>
 
       {% if company_type != '一般社団法人' %}
@@ -207,11 +207,11 @@ function addMember() {
     </div>
     <div class="form-group">
       <label class="form-label">氏名 <span class="required" style="color:#e53935;font-size:11px;margin-left:4px;">必須</span></label>
-      <input type="text" name="member_name_${i}" class="form-control" placeholder="例：田中 太郎" required>
+      <input type="text" name="member_name_${i}" class="form-control" placeholder="例：山田 太郎" required>
     </div>
     <div class="form-group">
       <label class="form-label">氏名フリガナ <span class="optional" style="color:#888;font-size:11px;margin-left:4px;">任意</span></label>
-      <input type="text" name="member_name_kana_${i}" class="form-control" placeholder="例：タナカ タロウ">
+      <input type="text" name="member_name_kana_${i}" class="form-control" placeholder="例：ヤマダ タロウ">
     </div>
     <div class="form-group">
       <label class="form-label">郵便番号 <span class="optional" style="color:#888;font-size:11px;margin-left:4px;">任意</span></label>
@@ -223,7 +223,7 @@ function addMember() {
     </div>
     <div class="form-group">
       <label class="form-label">連絡先電話番号 <span class="optional" style="color:#888;font-size:11px;margin-left:4px;">任意</span></label>
-      <input type="tel" name="member_phone_${i}" class="form-control" placeholder="例：070-5357-1155">
+      <input type="tel" name="member_phone_${i}" class="form-control" placeholder="例：090-0000-0000">
     </div>
     ${contribField}
     <div class="form-group">
