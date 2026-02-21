@@ -135,3 +135,17 @@ class TTenantAdminTenant(Base):
     __table_args__ = (
         {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci', 'extend_existing': True}
     )
+
+
+class TeikanDocument(Base):
+    """定款作成履歴テーブル"""
+    __tablename__ = 'T_定款'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(Integer, ForeignKey('T_テナント.id'), nullable=True)
+    created_by = Column(Integer, ForeignKey('T_管理者.id'), nullable=True)
+    company_name = Column(String(255), nullable=False)
+    company_type = Column(String(50), default='合同会社')
+    data_json = Column(Text, nullable=False)   # 全入力データをJSON文字列で保存
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

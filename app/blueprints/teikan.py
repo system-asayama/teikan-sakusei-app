@@ -4,11 +4,14 @@
 freee会社設立と同様のステップ形式UIで定款を作成する
 """
 import io
+import json
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
     flash, session, send_file
 )
 from app.utils import require_roles, ROLES
+from app.db import SessionLocal
+from app.models_login import TeikanDocument
 
 bp = Blueprint('teikan', __name__, url_prefix='/apps/teikan')
 
@@ -176,6 +179,164 @@ def reset():
     """セッションデータをリセットして最初から"""
     session.pop('teikan_data', None)
     return redirect(url_for('teikan.step1'))
+
+
+@bp.route('/save', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def save():
+    """定款データをDBに保存する"""
+    data = get_session_data()
+    if not data.get('company_name'):
+        flash('最初から入力してください', 'warning')
+        return redirect(url_for('teikan.step1'))
+
+    tenant_id = session.get('tenant_id')
+    user_id = session.get('user_id')
+    db = SessionLocal()
+    try:
+        # テーブルが存在しない場合は作成
+        from app.db import Base, engine
+        Base.metadata.create_all(bind=engine)
+
+        doc = TeikanDocument(
+            tenant_id=tenant_id,
+            created_by=user_id,
+            company_name=data.get('company_name', ''),
+            company_type=data.get('company_type', '合同会社'),
+            data_json=json.dumps(data, ensure_ascii=False)
+        )
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+        flash(f'「{doc.company_type}{doc.company_name}」の定款を保存しました', 'success')
+        session.pop('teikan_data', None)
+        return redirect(url_for('teikan.history'))
+    except Exception as e:
+        db.rollback()
+        flash(f'保存エラー: {str(e)}', 'error')
+        return redirect(url_for('teikan.confirm'))
+    finally:
+        db.close()
+
+
+@bp.route('/history')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def history():
+    """作成済み定款一覧"""
+    tenant_id = session.get('tenant_id')
+    db = SessionLocal()
+    try:
+        from app.db import Base, engine
+        Base.metadata.create_all(bind=engine)
+
+        docs = db.query(TeikanDocument).filter(
+            TeikanDocument.tenant_id == tenant_id
+        ).order_by(TeikanDocument.created_at.desc()).all()
+        return render_template('teikan/history.html', docs=docs)
+    except Exception as e:
+        flash(f'一覧取得エラー: {str(e)}', 'error')
+        return render_template('teikan/history.html', docs=[])
+    finally:
+        db.close()
+
+
+@bp.route('/history/<int:doc_id>')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def history_detail(doc_id):
+    """保存済み定款の詳細プレビュー"""
+    tenant_id = session.get('tenant_id')
+    db = SessionLocal()
+    try:
+        doc = db.query(TeikanDocument).filter(
+            TeikanDocument.id == doc_id,
+            TeikanDocument.tenant_id == tenant_id
+        ).first()
+        if not doc:
+            flash('定款が見つかりません', 'error')
+            return redirect(url_for('teikan.history'))
+        data = json.loads(doc.data_json)
+        return render_template('teikan/preview.html', data=data, doc=doc, readonly=True)
+    finally:
+        db.close()
+
+
+@bp.route('/history/<int:doc_id>/download')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def history_download(doc_id):
+    """保存済み定款のPDFダウンロード"""
+    tenant_id = session.get('tenant_id')
+    db = SessionLocal()
+    try:
+        doc = db.query(TeikanDocument).filter(
+            TeikanDocument.id == doc_id,
+            TeikanDocument.tenant_id == tenant_id
+        ).first()
+        if not doc:
+            flash('定款が見つかりません', 'error')
+            return redirect(url_for('teikan.history'))
+        data = json.loads(doc.data_json)
+        pdf_bytes = generate_teikan_pdf(data)
+        filename = f"{doc.company_type}{doc.company_name}_定款.pdf"
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        flash(f'PDF生成エラー: {str(e)}', 'error')
+        return redirect(url_for('teikan.history'))
+    finally:
+        db.close()
+
+
+@bp.route('/history/<int:doc_id>/delete', methods=['POST'])
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def history_delete(doc_id):
+    """保存済み定款の削除"""
+    tenant_id = session.get('tenant_id')
+    db = SessionLocal()
+    try:
+        doc = db.query(TeikanDocument).filter(
+            TeikanDocument.id == doc_id,
+            TeikanDocument.tenant_id == tenant_id
+        ).first()
+        if not doc:
+            flash('定款が見つかりません', 'error')
+            return redirect(url_for('teikan.history'))
+        name = f"{doc.company_type}{doc.company_name}"
+        db.delete(doc)
+        db.commit()
+        flash(f'「{name}」の定款を削除しました', 'success')
+        return redirect(url_for('teikan.history'))
+    except Exception as e:
+        db.rollback()
+        flash(f'削除エラー: {str(e)}', 'error')
+        return redirect(url_for('teikan.history'))
+    finally:
+        db.close()
+
+
+@bp.route('/history/<int:doc_id>/edit')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def history_edit(doc_id):
+    """保存済み定款をセッションに読み込んで編集再開"""
+    tenant_id = session.get('tenant_id')
+    db = SessionLocal()
+    try:
+        doc = db.query(TeikanDocument).filter(
+            TeikanDocument.id == doc_id,
+            TeikanDocument.tenant_id == tenant_id
+        ).first()
+        if not doc:
+            flash('定款が見つかりません', 'error')
+            return redirect(url_for('teikan.history'))
+        data = json.loads(doc.data_json)
+        save_session_data(data)
+        flash('定款データを読み込みました。内容を確認・編集してください', 'info')
+        return redirect(url_for('teikan.confirm'))
+    finally:
+        db.close()
 
 
 def generate_teikan_pdf(data):

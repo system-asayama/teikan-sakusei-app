@@ -190,8 +190,16 @@
   <a href="{{ url_for('teikan.preview') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;">
     📄 定款をプレビューする
   </a>
-  <a href="{{ url_for('teikan.download_pdf') }}" class="btn btn-success" style="text-decoration:none;">
+  <a href="{{ url_for('teikan.download_pdf') }}" class="btn btn-success" style="text-decoration:none;margin-bottom:12px;">
     ⬇️ 定款PDFをダウンロード
+  </a>
+  <form method="POST" action="{{ url_for('teikan.save') }}" style="margin-bottom:12px;">
+    <button type="submit" class="btn" style="background:#1a1a2e;color:#fff;width:100%;border:none;cursor:pointer;">
+      💾 定款を保存する
+    </button>
+  </form>
+  <a href="{{ url_for('teikan.history') }}" style="display:block;text-align:center;font-size:13px;color:#4A90E2;text-decoration:none;margin-top:8px;">
+    一覧を見る →
   </a>
 </div>
 {% endblock %}

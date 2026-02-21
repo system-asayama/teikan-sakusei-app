@@ -87,8 +87,13 @@
 {% block content %}
 <!-- アクションバー -->
 <div class="no-print" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+  {% if readonly and doc %}
+  <a href="{{ url_for('teikan.history') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;padding:10px 16px;">← 一覧に戻る</a>
+  <a href="{{ url_for('teikan.history_download', doc_id=doc.id) }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:10px 16px;">⬇️ PDFダウンロード</a>
+  {% else %}
   <a href="{{ url_for('teikan.confirm') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;padding:10px 16px;">← 確認画面に戻る</a>
   <a href="{{ url_for('teikan.download_pdf') }}" class="btn btn-primary" style="text-decoration:none;width:auto;padding:10px 16px;">⬇️ PDFダウンロード</a>
+  {% endif %}
   <button onclick="window.print()" class="btn btn-outline-primary" style="width:auto;padding:10px 16px;">🖨️ 印刷</button>
 </div>
 
@@ -269,11 +274,20 @@
 
 <!-- 下部アクション -->
 <div class="no-print" style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;">
+  {% if readonly and doc %}
+  <a href="{{ url_for('teikan.history_download', doc_id=doc.id) }}" class="btn btn-primary" style="text-decoration:none;">
+    ⬇️ PDFダウンロード
+  </a>
+  <a href="{{ url_for('teikan.history') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;padding:13px 24px;">
+    ← 一覧に戻る
+  </a>
+  {% else %}
   <a href="{{ url_for('teikan.download_pdf') }}" class="btn btn-primary" style="text-decoration:none;">
     ⬇️ PDFダウンロード
   </a>
   <a href="{{ url_for('teikan.confirm') }}" class="btn btn-secondary" style="text-decoration:none;width:auto;padding:13px 24px;">
     ← 確認画面に戻る
   </a>
+  {% endif %}
 </div>
 {% endblock %}
