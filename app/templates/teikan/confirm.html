@@ -138,7 +138,7 @@
 <p style="font-size:13px;color:#666;margin-bottom:20px;">入力内容をもとに定款が自動作成されます。各項目をタップすると編集できます。確認後「定款を作成する」ボタンを押してください。</p>
 
 <!-- 法人形態・商号 -->
-<a href="{{ url_for('teikan.step1') }}" class="edit-card">
+<a href="{% if data.get('company_type') %}{{ url_for('teikan.step1') }}{% else %}{{ url_for('teikan.select_type') }}{% endif %}" class="edit-card">
   {% if data.get('company_name') %}
   <div class="check-badge">✓</div>
   {% else %}
@@ -147,8 +147,10 @@
   <div class="card-label">法人形態/商号等</div>
   {% if data.get('company_name') %}
   <div class="card-val">{{ data.get('company_type', '合同会社') }}{{ data.get('company_name', '') }}</div>
+  {% elif data.get('company_type') %}
+  <div class="card-val" style="color:#666;">{{ data.get('company_type') }}（商号未入力）</div>
   {% else %}
-  <div class="card-empty">タップして入力してください</div>
+  <div class="card-empty">タップして法人形態を選択</div>
   {% endif %}
   <div class="edit-hint">タップして編集</div>
 </a>
@@ -316,9 +318,15 @@
     </button>
   </form>
   {% else %}
+  {% if data.get('company_type') %}
   <a href="{{ url_for('teikan.step1') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;">
-    ✏️ 法人情報を入力する（ステップ1から）
+    ✏️ 法人情報を入力する
   </a>
+  {% else %}
+  <a href="{{ url_for('teikan.select_type') }}" class="btn btn-primary" style="text-decoration:none;margin-bottom:12px;">
+    ✏️ 法人形態を選択する
+  </a>
+  {% endif %}
   {% endif %}
   <a href="{{ url_for('teikan.history') }}" style="display:block;text-align:center;font-size:13px;color:#4A90E2;text-decoration:none;margin-top:8px;">
     一覧を見る →
