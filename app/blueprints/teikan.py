@@ -2398,11 +2398,12 @@ def generate_registration_items_pdf(data):  # noqa: C901
 
     def draw_item(label, value, y_pos, indent=0):
         c.setFont(font_name, 10)
+        # 点線を先に描画（文字の下に来るよう）
+        draw_dotted_line(y_pos - line_height + 3)
+        # 文字を点線の上に描画
         c.drawString(box_margin_x + 5 * mm + indent, y_pos, f'「{label}」')
         c.drawString(box_margin_x + 35 * mm + indent, y_pos, str(value))
-        new_y = y_pos - line_height
-        draw_dotted_line(new_y + 5)
-        return new_y
+        return y_pos - line_height
 
     # --- 内容描画 ---
     y = draw_item("商号", full_name, y)
@@ -2410,46 +2411,44 @@ def generate_registration_items_pdf(data):  # noqa: C901
     y = draw_item("公告をする方法", "官報に掲載して行う。", y)
 
     # 目的（複数行）
-    # ラベルを描画
+    purpose_count = max(len(purposes), 1)
+    purpose_block_height = purpose_count * 18
+    # 点線を先に描画（ブロック全体の下端）
+    draw_dotted_line(y - purpose_block_height + 3)
+    # ラベルと各目的を描画
     c.setFont(font_name, 10)
     c.drawString(box_margin_x + 5 * mm, y, '「目的」')
-    # 各目的を同じy位置から1行ずつ下に描画
-    purpose_start_y = y
     for i, p in enumerate(purposes, 1):
-        c.drawString(box_margin_x + 35 * mm, purpose_start_y - i * 18 + 18, f'({i}) {p}')
-    # 目的の行数分だけyを下げる
-    purpose_count = max(len(purposes), 1)
-    y = purpose_start_y - purpose_count * 18
-    draw_dotted_line(y + 2)
-    y -= 8  # 点線の下に少し余白
+        c.drawString(box_margin_x + 35 * mm, y - (i - 1) * 18, f'({i}) {p}')
+    y = y - purpose_block_height
 
     y = draw_item("資本金の額", f'金{capital_str}円', y)
 
     # 社員に関する事項（合同会社）
     # 業務執行社員
+    draw_dotted_line(y - line_height + 3)
     c.setFont(font_name, 10)
     c.drawString(box_margin_x + 5 * mm, y, '「社員に関する事項」')
     y -= line_height
-    draw_dotted_line(y + 5)
     for member in members:
         y = draw_item("資格", "業務執行社員", y, indent=5*mm)
         y = draw_item("氏名", member.get('name', ''), y, indent=5*mm)
 
     # 代表社員
+    draw_dotted_line(y - line_height + 3)
     c.setFont(font_name, 10)
     c.drawString(box_margin_x + 5 * mm, y, '「社員に関する事項」')
     y -= line_height
-    draw_dotted_line(y + 5)
     y = draw_item("資格", "代表社員", y, indent=5*mm)
     y = draw_item("住所", rep_address, y, indent=5*mm)
     y = draw_item("氏名", rep_name, y, indent=5*mm)
 
     # 登記記録に関する事項
+    draw_dotted_line(y - line_height + 3)
     c.setFont(font_name, 10)
     c.drawString(box_margin_x + 5 * mm, y, '「登記記録に関する事項」')
     c.drawString(box_margin_x + 55 * mm, y, '設立')
     y -= line_height
-    draw_dotted_line(y + 5)
 
     # --- 申請人印 ---
     seal_box_size = 25 * mm
