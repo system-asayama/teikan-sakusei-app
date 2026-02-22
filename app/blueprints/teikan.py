@@ -2410,19 +2410,24 @@ def generate_registration_items_pdf(data):  # noqa: C901
     y = draw_item("公告をする方法", "官報に掲載して行う。", y)
 
     # 目的（複数行）
+    # ラベルを描画
+    c.setFont(font_name, 10)
     c.drawString(box_margin_x + 5 * mm, y, '「目的」')
-    purpose_y = y
+    # 各目的を同じy位置から1行ずつ下に描画
+    purpose_start_y = y
     for i, p in enumerate(purposes, 1):
-        c.drawString(box_margin_x + 35 * mm, purpose_y, f'({i}) {p}')
-        purpose_y -= 18
-    y = purpose_y
+        c.drawString(box_margin_x + 35 * mm, purpose_start_y - i * 18 + 18, f'({i}) {p}')
+    # 目的の行数分だけyを下げる
+    purpose_count = max(len(purposes), 1)
+    y = purpose_start_y - purpose_count * 18
     draw_dotted_line(y + 2)
-    y -= (line_height - 18)
+    y -= 8  # 点線の下に少し余白
 
     y = draw_item("資本金の額", f'金{capital_str}円', y)
 
     # 社員に関する事項（合同会社）
     # 業務執行社員
+    c.setFont(font_name, 10)
     c.drawString(box_margin_x + 5 * mm, y, '「社員に関する事項」')
     y -= line_height
     draw_dotted_line(y + 5)
@@ -2431,6 +2436,7 @@ def generate_registration_items_pdf(data):  # noqa: C901
         y = draw_item("氏名", member.get('name', ''), y, indent=5*mm)
 
     # 代表社員
+    c.setFont(font_name, 10)
     c.drawString(box_margin_x + 5 * mm, y, '「社員に関する事項」')
     y -= line_height
     draw_dotted_line(y + 5)
@@ -2439,7 +2445,11 @@ def generate_registration_items_pdf(data):  # noqa: C901
     y = draw_item("氏名", rep_name, y, indent=5*mm)
 
     # 登記記録に関する事項
-    y = draw_item("登記記録に関する事項", "設立", y)
+    c.setFont(font_name, 10)
+    c.drawString(box_margin_x + 5 * mm, y, '「登記記録に関する事項」')
+    c.drawString(box_margin_x + 55 * mm, y, '設立')
+    y -= line_height
+    draw_dotted_line(y + 5)
 
     # --- 申請人印 ---
     seal_box_size = 25 * mm
