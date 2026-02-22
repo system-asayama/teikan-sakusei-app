@@ -2410,18 +2410,18 @@ def generate_registration_items_pdf(data):  # noqa: C901
     y = draw_item("本店", address, y)
     y = draw_item("公告をする方法", "官報に掲載して行う。", y)
 
-    # 目的（複数行）
-    purpose_count = max(len(purposes), 1)
-    purpose_row_height = 20  # 目的各行の高さ
-    purpose_block_height = purpose_count * purpose_row_height
-    # ラベルと各目的を描画
+    # 目的（各項目を独立行で描画）
+    # 「目的」ラベル行
     c.setFont(font_name, 10)
     c.drawString(box_margin_x + 5 * mm, y, '「目的」')
+    draw_dotted_line(y - line_height + 10)
+    y -= line_height
+    # 各目的を独立行で描画
     for i, p in enumerate(purposes, 1):
-        c.drawString(box_margin_x + 35 * mm, y - (i - 1) * purpose_row_height, f'({i}) {p}')
-    # 点線をブロックの下端に描画（最後の目的文字の下）
-    draw_dotted_line(y - purpose_block_height + 8)
-    y = y - purpose_block_height
+        c.setFont(font_name, 10)
+        c.drawString(box_margin_x + 5 * mm, y, f'（{i}）　{p}')
+        draw_dotted_line(y - line_height + 10)
+        y -= line_height
 
     y = draw_item("資本金の額", f'金{capital_str}円', y)
 
