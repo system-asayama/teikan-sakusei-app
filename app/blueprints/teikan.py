@@ -1958,43 +1958,51 @@ def generate_seal_registration_pdf(data):  # noqa: C901
         c.setFont(fn, 9)
 
     # 生年月日（印鑑提出者）（y=581.6pt）
-    # テンプレート: 「大・昭・平・西暦」(x=322) 「年」(x=392.5) 「月」(x=480.4) 「日生」(x=443.9)
+    # テンプレート: 「大・昭・平・西暦」(x=322〜400) 「年」(x=440〜455) 「月」(x=480〜495) 「日」(x=510〜520) 「生」(x=520〜530)
     birth_era = rep.get('birth_era', '')
     birth_year = rep.get('birth_year', '')
     birth_month = rep.get('birth_month', '')
     birth_day = rep.get('birth_day', '')
     if birth_era or birth_year:
         # 元号を○で囲む
-        # 画像解析結果: x=321.96から「大・昭・平・西暦」
-        # 各元号の中心x座標（グリッド画像から計測）
+        # 高解像度画像(600dpi)から計測した各元号の中心x座標
+        # 「大・昭・平・西暦」はx=321.96から始まる
+        # 各文字間隔: 大(325)・(中点)・昭(337)・(中点)・平(350)・(中点)・西暦(363-373)
+        # 各元号の中心x座標（計算式: x=321.96 + i*8.82 + 4.41）
         era_positions = {
-            '大正': (327.0, 584.0),   # x=321.96 + 5pt (拡大画像計測)
-            '昭和': (347.0, 584.0),   # x=321.96 + 25pt (拡大画像計測)
-            '平成': (367.0, 584.0),   # x=321.96 + 45pt (拡大画像計測)
-            '西暦': (385.0, 584.0),   # x=321.96 + 63pt (西暦は2文字中心)
+            '大正': (326.4, 584.0),   # 「大」の中心 (321.96 + 0*8.82 + 4.41)
+            '昭和': (344.0, 584.0),   # 「昭」の中心 (321.96 + 2*8.82 + 4.41)
+            '平成': (361.7, 584.0),   # 「平」の中心 (321.96 + 4*8.82 + 4.41)
+            '西暦': (383.7, 584.0),   # 「西暦」の中心 (2文字の中心)
         }
         if birth_era in era_positions:
             ex, ey = era_positions[birth_era]
             c.setLineWidth(0.8)
-            # 元号文字の周りに横長楕円を描画
-            w = 14 if birth_era == '西暦' else 10
-            c.ellipse(ex - w//2, ey - 5, ex + w//2, ey + 7, stroke=1, fill=0)
-        # 年・月・日を入力
+            # 元号文字の周りに楕円を描画
+            w = 6 if birth_era != '西暦' else 11
+            h = 6
+            c.ellipse(ex - w, ey - h, ex + w, ey + h + 2, stroke=1, fill=0)
+        # 年・月・日を入力（フォントサイズ9pt）
         c.setFont(fn, 9)
-        # テンプレート座標: 「年」x=392.52、「日生」x=443.88、「月」x=480.36
-        # 年の入力は「年」ラベルの左側に右寄せ
+        # 高解像度画像(600dpi)から計測した正確なラベル位置:
+        # 「年」左端x≈440pt、「月」左端x≈480pt、「日」左端x≈510pt
+        # 数字1文字幅はフォントサイズの約0.6倍
+        char_w = 5.4  # 9ptフォントの数字1文字幅
+        # 年数: 「年」(x=440)の直前に右寄せ配置
         if birth_year:
             year_str = str(birth_year)
-            # 年の入力桁数に応じて位置調整（1桁=5pt、中央寄せ）
-            c.drawString(389 - len(year_str) * 5, 581.6, year_str)
-        # 日の入力は「日生」ラベルの左側に右寄せ
-        if birth_day:
-            day_str = str(birth_day)
-            c.drawString(441 - len(day_str) * 5, 581.6, day_str)
-        # 月の入力は「月」ラベルの左側に右寄せ
+            x_year = 440.0 - len(year_str) * char_w
+            c.drawString(x_year, 581.6, year_str)
+        # 月数: 「月」(x=480)の直前に右寄せ配置
         if birth_month:
             month_str = str(birth_month)
-            c.drawString(477 - len(month_str) * 5, 581.6, month_str)
+            x_month = 480.0 - len(month_str) * char_w
+            c.drawString(x_month, 581.6, month_str)
+        # 日数: 「日」(x=510)の直前に右寄せ配置
+        if birth_day:
+            day_str = str(birth_day)
+            x_day = 510.0 - len(day_str) * char_w
+            c.drawString(x_day, 581.6, day_str)
 
     c.save()
     overlay_buffer.seek(0)
