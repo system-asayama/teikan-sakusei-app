@@ -2222,18 +2222,18 @@ def generate_inkan_card_pdf(data):  # noqa: C901
         # 年・月・日を入力
         c.setFont(fn, 9)
         char_w = 5.4  # 9ptフォントの数字1文字幅
-        # 画像直接計測: 「年」左端x≈415, 「月」左端x≈460, 「日」左端x≈510（3pt左にオフセット）
+        # 複数候補比較テストで最適値を確認: 年=395, 月=440, 日=490
         if birth_year:
             year_str = str(birth_year)
-            x_year = 412.0 - len(year_str) * char_w
+            x_year = 395.0 - len(year_str) * char_w
             c.drawString(x_year, 513.0, year_str)
         if birth_month:
             month_str = str(birth_month)
-            x_month = 457.0 - len(month_str) * char_w
+            x_month = 440.0 - len(month_str) * char_w
             c.drawString(x_month, 513.0, month_str)
         if birth_day:
             day_str = str(birth_day)
-            x_day = 507.0 - len(day_str) * char_w
+            x_day = 490.0 - len(day_str) * char_w
             c.drawString(x_day, 513.0, day_str)
 
     c.save()
