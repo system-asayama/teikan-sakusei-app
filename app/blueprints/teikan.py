@@ -2207,7 +2207,7 @@ def generate_inkan_card_pdf(data):  # noqa: C901
     if birth_era or birth_year:
         era_positions = {
             '大正': (265.0, 516.5),
-            '昭和': (288.0, 518.0),
+            '昭和': (291.0, 519.5),
             '平成': (308.0, 518.0),
             '令和': (325.0, 516.5),  # テンプレートに令和なし→西暦位置に近い箇所
             '西暦': (340.0, 516.5),
@@ -2226,15 +2226,15 @@ def generate_inkan_card_pdf(data):  # noqa: C901
         if birth_year:
             year_str = str(birth_year)
             x_year = 395.0 - len(year_str) * char_w
-            c.drawString(x_year, 515.0, year_str)
+            c.drawString(x_year, 517.0, year_str)
         if birth_month:
             month_str = str(birth_month)
             x_month = 440.0 - len(month_str) * char_w
-            c.drawString(x_month, 515.0, month_str)
+            c.drawString(x_month, 517.0, month_str)
         if birth_day:
             day_str = str(birth_day)
             x_day = 490.0 - len(day_str) * char_w
-            c.drawString(x_day, 515.0, day_str)
+            c.drawString(x_day, 517.0, day_str)
 
     c.save()
     overlay_buffer.seek(0)
