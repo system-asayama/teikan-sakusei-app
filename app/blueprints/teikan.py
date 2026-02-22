@@ -1912,26 +1912,25 @@ def generate_seal_registration_pdf(data):  # noqa: C901
     c.setLineWidth(1.0)
     c.setStrokeColorRGB(0, 0, 0)
     c.setFillColorRGB(0, 0, 0)
+    # 資格欄の構造（テンプレートの座標）:
+    # y=657.3: 「代表取締役・取締役・代表理事」 (x=340.1から全体幅約170pt)
+    # y=639.3: 「理事 ・ (」(x=327.5) 〜 「)」(x=376.4)、全体幅約540まで
     if company_type == '株式会社':
-        # 「代表取締役」を○で囲む（x=340.1, y=657.3）
-        # 「代表取締役」は約35pt幅
-        cx = 358.0  # 中心x
-        cy = 660.8  # 中心y
-        c.ellipse(cx - 22, cy - 6, cx + 22, cy + 10, stroke=1, fill=0)
+        # 「代表取締役」を○で囲む（x=340.1から始まる、幅約55pt）
+        # 「代表取締役」: x=340.1, 文字幅約55pt
+        c.ellipse(336, 653, 396, 668, stroke=1, fill=0)
     elif company_type == '一般社団法人' or company_type == '一般財団法人':
-        # 「代表理事」を○で囲む（x=440付近, y=657.3）
-        cx = 460.0
-        cy = 660.8
-        c.ellipse(cx - 18, cy - 6, cx + 18, cy + 10, stroke=1, fill=0)
+        # 「代表理事」を○で囲む（「代表理事」は行の最後部分）
+        # 「代表取締役・取締役・代表理事」の「代表理事」部分: x約44pt幅
+        c.ellipse(440, 653, 500, 668, stroke=1, fill=0)
     else:
-        # 合同会社など → 「理事 ・ (　)」の括弧内に「代表社員」テキストを書いて○で囲む
-        # 括弧: 「(」x=355, 「)」x=376.4, y=639.3
-        c.setFont(fn, 7)
-        c.drawString(358, 639.3, role)
-        # 括弧内テキストを○で囲む
-        cx = 365.0
-        cy = 642.8
-        c.ellipse(cx - 16, cy - 5, cx + 16, cy + 8, stroke=1, fill=0)
+        # 合同会社など → 「理事 ・ (　)」の行全体を○で囲む
+        # 「理事 ・ (」: x=327.5 〜 「)」: x=376.4+文字幅約10pt → x=386まで
+        # 括弧内に「代表社員」テキストを書く
+        c.setFont(fn, 8)
+        c.drawString(356, 639.3, role)
+        # 「理事・（代表社員）」行全体を○で囲む
+        c.ellipse(323, 632, 543, 652, stroke=1, fill=0)
 
     # 氏名（印鑑提出者）（ラベルy=613pt）
     c.setFont(fn, 9)
