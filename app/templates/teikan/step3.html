@@ -190,7 +190,7 @@ document.getElementById('quick-industry').addEventListener('change', function() 
     btn.style.cssText = 'padding:6px 12px;border:1.5px solid #1a6fc4;border-radius:20px;background:#f0f6ff;color:#1a6fc4;font-size:13px;cursor:pointer;';
     btn.textContent = text.length > 25 ? text.substring(0, 25) + '...' : text;
     btn.title = text;
-    btn.onclick = () => addPurposeWithText(text);
+    btn.onclick = () => fillOrAddPurpose(text);
     listDiv.appendChild(btn);
   });
 
@@ -199,6 +199,17 @@ document.getElementById('quick-industry').addEventListener('change', function() 
 
 function addPurpose() {
   addPurposeWithText('');
+}
+
+function fillOrAddPurpose(text) {
+  // 最初の事業目的1が空なら直接入力、埋まっていれば新規追加
+  const firstTextarea = document.querySelector('#purposes-container textarea');
+  if (firstTextarea && firstTextarea.value.trim() === '') {
+    firstTextarea.value = text;
+    firstTextarea.focus();
+  } else {
+    addPurposeWithText(text);
+  }
 }
 
 function addPurposeWithText(text) {
