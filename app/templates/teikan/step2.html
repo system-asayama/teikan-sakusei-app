@@ -108,6 +108,29 @@
           placeholder="例：090-0000-0000" value="{{ member.get('phone', '') }}">
       </div>
 
+      <div class="form-group">
+        <label class="form-label">生年月日 <span class="optional">任意</span></label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select name="member_birth_era_{{ i }}" class="form-control" style="width:90px;">
+            <option value="">元号</option>
+            <option value="大正" {{ 'selected' if member.get('birth_era') == '大正' else '' }}>大正</option>
+            <option value="昭和" {{ 'selected' if member.get('birth_era') == '昭和' else '' }}>昭和</option>
+            <option value="平成" {{ 'selected' if member.get('birth_era') == '平成' else '' }}>平成</option>
+            <option value="令和" {{ 'selected' if member.get('birth_era') == '令和' else '' }}>令和</option>
+          </select>
+          <input type="number" name="member_birth_year_{{ i }}" class="form-control" style="width:75px;"
+            placeholder="年" min="1" max="99" value="{{ member.get('birth_year', '') }}">
+          <span>年</span>
+          <input type="number" name="member_birth_month_{{ i }}" class="form-control" style="width:65px;"
+            placeholder="月" min="1" max="12" value="{{ member.get('birth_month', '') }}">
+          <span>月</span>
+          <input type="number" name="member_birth_day_{{ i }}" class="form-control" style="width:65px;"
+            placeholder="日" min="1" max="31" value="{{ member.get('birth_day', '') }}">
+          <span>日生</span>
+        </div>
+        <p class="form-hint">印鑑届出書に使用します</p>
+      </div>
+
       {% if company_type != '一般社団法人' %}
       <div class="form-group">
         <label class="form-label">出資金額（円）<span class="required">必須</span></label>
@@ -224,6 +247,25 @@ function addMember() {
     <div class="form-group">
       <label class="form-label">連絡先電話番号 <span class="optional" style="color:#888;font-size:11px;margin-left:4px;">任意</span></label>
       <input type="tel" name="member_phone_${i}" class="form-control" placeholder="例：090-0000-0000">
+    </div>
+    <div class="form-group">
+      <label class="form-label">生年月日 <span class="optional" style="color:#888;font-size:11px;margin-left:4px;">任意</span></label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select name="member_birth_era_${i}" class="form-control" style="width:90px;">
+          <option value="">元号</option>
+          <option value="大正">大正</option>
+          <option value="昭和">昭和</option>
+          <option value="平成">平成</option>
+          <option value="令和">令和</option>
+        </select>
+        <input type="number" name="member_birth_year_${i}" class="form-control" style="width:75px;" placeholder="年" min="1" max="99">
+        <span>年</span>
+        <input type="number" name="member_birth_month_${i}" class="form-control" style="width:65px;" placeholder="月" min="1" max="12">
+        <span>月</span>
+        <input type="number" name="member_birth_day_${i}" class="form-control" style="width:65px;" placeholder="日" min="1" max="31">
+        <span>日生</span>
+      </div>
+      <p class="form-hint">印鑑届出書に使用します</p>
     </div>
     ${contribField}
     <div class="form-group">

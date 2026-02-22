@@ -155,6 +155,10 @@ def step2():
                 'postal_code': request.form.get(f'member_postal_{i}', ''),
                 'address': request.form.get(f'member_address_{i}', ''),
                 'phone': request.form.get(f'member_phone_{i}', ''),
+                'birth_era': request.form.get(f'member_birth_era_{i}', ''),
+                'birth_year': request.form.get(f'member_birth_year_{i}', ''),
+                'birth_month': request.form.get(f'member_birth_month_{i}', ''),
+                'birth_day': request.form.get(f'member_birth_day_{i}', ''),
             }
             if member['name']:
                 members.append(member)
@@ -1945,6 +1949,47 @@ def generate_seal_registration_pdf(data):  # noqa: C901
 
     # 氏名（届出人）（ラベルy=413.6pt）- ラベル右側に配置
     c.drawString(130, 413.6, rep.get('name', ''))
+
+    # フリガナ（届出人）（ラベルy=436.8pt）- ラベル右側に配置
+    name_kana = rep.get('name_kana', '')
+    if name_kana:
+        c.setFont(fn, 8)
+        c.drawString(130, 436.8, name_kana)
+        c.setFont(fn, 9)
+
+    # 生年月日（印鑑提出者）（y=581.6pt）
+    # テンプレート: 「大・昭・平・西暦」(x=322) 「年」(x=392.5) 「月」(x=480.4) 「日生」(x=443.9)
+    birth_era = rep.get('birth_era', '')
+    birth_year = rep.get('birth_year', '')
+    birth_month = rep.get('birth_month', '')
+    birth_day = rep.get('birth_day', '')
+    if birth_era or birth_year:
+        # 元号を○で囲む
+        era_positions = {
+            '大正': (322.0, 585.0),
+            '昭和': (335.5, 585.0),
+            '平成': (349.0, 585.0),
+            '西暦': (362.5, 585.0),
+        }
+        if birth_era in era_positions:
+            ex, ey = era_positions[birth_era]
+            c.setLineWidth(0.8)
+            c.ellipse(ex - 1, ey - 4, ex + 10, ey + 8, stroke=1, fill=0)
+        # 年・月・日を入力
+        c.setFont(fn, 9)
+        # テンプレート座標: 「年」x=392.5、「日生」x=443.9、「月」x=480.4
+        # 年の入力は「年」ラベルの左側
+        if birth_year:
+            year_str = str(birth_year)
+            c.drawString(392.5 - len(year_str) * 6 - 2, 581.6, year_str)
+        # 日の入力は「日生」ラベルの左側
+        if birth_day:
+            day_str = str(birth_day)
+            c.drawString(443.9 - len(day_str) * 6 - 2, 581.6, day_str)
+        # 月の入力は「月」ラベルの左側
+        if birth_month:
+            month_str = str(birth_month)
+            c.drawString(480.4 - len(month_str) * 6 - 2, 581.6, month_str)
 
     c.save()
     overlay_buffer.seek(0)
