@@ -1042,6 +1042,69 @@ def download_all_docs():
 
 
 # ============================================================
+# PDF プレビュー API（PDF生成→画像変換→base64返却）
+# ============================================================
+
+def _pdf_to_preview_images(pdf_bytes, dpi=120):
+    """PDFバイト列を画像のbase64リストに変換する"""
+    import base64
+    from io import BytesIO
+    try:
+        from pdf2image import convert_from_bytes
+        images = convert_from_bytes(pdf_bytes, dpi=dpi)
+        result = []
+        for img in images:
+            buf = BytesIO()
+            img.save(buf, format='JPEG', quality=85)
+            b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+            result.append(f'data:image/jpeg;base64,{b64}')
+        return result
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@bp.route('/registration_docs/preview_pdf/<doc_type>')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def preview_pdf(doc_type):
+    """書類のPDFを生成して画像プレビューをJSONで返す"""
+    from flask import jsonify
+    data = get_session_data()
+    if not data.get('company_name'):
+        return jsonify({'error': '最初から入力してください'}), 400
+    try:
+        if doc_type == 'teikan':
+            pdf_bytes = generate_teikan_pdf(data)
+        elif doc_type == 'application':
+            pdf_bytes = generate_registration_application_pdf(data)
+        elif doc_type == 'payment_certificate':
+            pdf_bytes = generate_payment_certificate_pdf(data)
+        elif doc_type == 'capital_certificate':
+            pdf_bytes = generate_capital_certificate_pdf(data)
+        elif doc_type == 'office_location':
+            pdf_bytes = generate_office_location_pdf(data)
+        elif doc_type == 'acceptance_letter':
+            pdf_bytes = generate_acceptance_letter_pdf(data)
+        elif doc_type == 'founder_resolution':
+            pdf_bytes = generate_founder_resolution_pdf(data)
+        elif doc_type == 'seal_registration':
+            pdf_bytes = generate_seal_registration_pdf(data)
+        elif doc_type == 'inkan_card':
+            pdf_bytes = generate_inkan_card_pdf(data)
+        else:
+            return jsonify({'error': '不明な書類種別です'}), 400
+        if isinstance(pdf_bytes, bytes):
+            pass
+        else:
+            pdf_bytes = bytes(pdf_bytes)
+        images = _pdf_to_preview_images(pdf_bytes)
+        if isinstance(images, dict) and 'error' in images:
+            return jsonify(images), 500
+        return jsonify({'images': images, 'page_count': len(images)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
 # 登記書類 PDF生成関数
 # ============================================================
 
