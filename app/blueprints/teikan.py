@@ -2349,131 +2349,108 @@ def generate_stamp_duty_sheet_pdf(data):
 
 
 def generate_registration_items_pdf(data):  # noqa: C901
-    """別紙（登記すべき事項）のPDFを生成する"""
+    """別紙（登記すべき事項）のPDFを生成する（ユーザー指定の書式）"""
     c, buffer, width, height, margin_left, margin_right, margin_top, margin_bottom, content_width, font_name, mm = _setup_pdf_canvas()
-    company_type = data.get('company_type', '合同会社')
-    company_name = data.get('company_name', '')
-    company_type_position = data.get('company_type_position', 'before')
-    if company_type_position == 'before':
-        full_name = f'{company_type}{company_name}'
-    else:
-        full_name = f'{company_name}{company_type}'
-    address = data.get('address', '')
+
+    # --- データ取得 ---
+    full_name = _get_full_company_name(data)
+    address = data.get('address', '') + ' ' + data.get('address_detail', '')
     purposes = data.get('purposes', [])
-    capital = data.get('capital_amount', '')
+    capital = data.get('capital', '0')
     try:
         capital_int = int(str(capital).replace(',', '').replace('，', ''))
         capital_str = f'{capital_int:,}'
-    except Exception:
+    except (ValueError, TypeError):
         capital_str = str(capital)
+
     members = data.get('members', [])
-    # ページ設定
-    y = height - margin_top
-    line_h = 7.5 * mm
+    rep_members = [m for m in members if m.get('is_representative')]
+    if not rep_members and members:
+        rep_members = [members[0]]
+    rep = rep_members[0] if rep_members else {}
+    rep_name = rep.get('name', '')
+    rep_address = rep.get('address', '')
 
-    def new_page():
-        nonlocal y
-        c.showPage()
-        y = height - margin_top
-
-    def draw_item(label, value_lines, y_pos):
-        """1項目を描画する（複数行対応）"""
-        c.setLineWidth(0.5)
-        c.setFont(font_name, 9)
-        # ラベル
-        c.drawString(margin_left, y_pos - 5 * mm, label)
-        # 値（複数行）
-        for i, line in enumerate(value_lines):
-            c.drawString(margin_left + 35 * mm, y_pos - 5 * mm - i * 5 * mm, line)
-        total_h = max(line_h, 5 * mm * len(value_lines) + 3 * mm)
-        c.line(margin_left, y_pos, margin_left + content_width, y_pos)
-        return y_pos - total_h
-
-    # タイトル
-    c.setFont(font_name, 12)
-    c.drawString(margin_left, y, '別　紙')
-    y -= 8 * mm
+    # --- 描画設定 ---
     c.setFont(font_name, 10)
-    c.drawString(margin_left, y, '登記すべき事項')
-    y -= 10 * mm
+    c.setFillColorRGB(0, 0, 0)
+    line_height = 24
+    y = height - 45 * mm
 
-    # 外枠上線
+    # --- ヘッダー ---
+    c.setFont(font_name, 14)
+    c.drawString(margin_left, height - 30 * mm, "別紙")
+    c.setFont(font_name, 10)
+    c.drawString(width - margin_right - 10 * mm, height - 30 * mm, "1/1頁")
+
+    # --- 外枠 ---
+    c.setLineWidth(1.5)
+    box_margin_x = 12 * mm
+    box_margin_y = 35 * mm
+    c.rect(box_margin_x, box_margin_y, width - 2 * box_margin_x, height - box_margin_y - 25 * mm)
     c.setLineWidth(0.5)
-    c.line(margin_left, y, margin_left + content_width, y)
 
-    # 商号
-    y = draw_item('商号', [full_name], y)
+    # --- 描画ヘルパー ---
+    def draw_dotted_line(y_pos):
+        c.setDash(1, 2)
+        c.line(box_margin_x, y_pos, width - box_margin_x, y_pos)
+        c.setDash([])
 
-    # 本店
-    y = draw_item('本店', [address], y)
+    def draw_item(label, value, y_pos, indent=0):
+        c.setFont(font_name, 10)
+        c.drawString(box_margin_x + 5 * mm + indent, y_pos, f'「{label}」')
+        c.drawString(box_margin_x + 35 * mm + indent, y_pos, str(value))
+        new_y = y_pos - line_height
+        draw_dotted_line(new_y + 5)
+        return new_y
 
-    # 公告方法
-    y = draw_item('公告をする方法', ['官報に掲載して行う。'], y)
+    # --- 内容描画 ---
+    y = draw_item("商号", full_name, y)
+    y = draw_item("本店", address, y)
+    y = draw_item("公告をする方法", "官報に掲載して行う。", y)
 
-    # 目的
-    if purposes:
-        purpose_lines = [f'({i}) {p}' for i, p in enumerate(purposes, 1)]
-        y = draw_item('目的', purpose_lines, y)
-    else:
-        y = draw_item('目的', ['（目的未設定）'], y)
+    # 目的（複数行）
+    c.drawString(box_margin_x + 5 * mm, y, '「目的」')
+    purpose_y = y
+    for i, p in enumerate(purposes, 1):
+        c.drawString(box_margin_x + 35 * mm, purpose_y, f'({i}) {p}')
+        purpose_y -= 18
+    y = purpose_y
+    draw_dotted_line(y + 2)
+    y -= (line_height - 18)
 
-    # 資本金
-    y = draw_item('資本金の額', [f'金{capital_str}円'], y)
+    y = draw_item("資本金の額", f'金{capital_str}円', y)
 
-    # 社員・役員情報
-    if company_type == '合同会社' and members:
-        for member in members:
-            member_name = member.get('name', '')
-            member_address = member.get('address', '')
-            member_role = member.get('role', '業務執行社員')
-            is_rep = member.get('is_representative', False) or member_role in ['代表社員', '代表理事']
-            # 業務執行社員
-            y = draw_item('社員に関する事項', [''], y)
-            if member_address:
-                y = draw_item('　住所', [member_address], y)
-            y = draw_item('　氏名', [member_name], y)
-            y = draw_item('　資格', [member_role], y)
-            if is_rep or member_role == '代表社員':
-                y = draw_item('代表社員に関する事項', [''], y)
-                if member_address:
-                    y = draw_item('　住所', [member_address], y)
-                y = draw_item('　氏名', [member_name], y)
-            if y < margin_bottom + 30 * mm:
-                new_page()
-    elif company_type == '株式会社' and members:
-        for member in members:
-            member_name = member.get('name', '')
-            member_address = member.get('address', '')
-            member_role = member.get('role', '取締役')
-            y = draw_item('役員に関する事項', [''], y)
-            y = draw_item('　資格', [member_role], y)
-            y = draw_item('　氏名', [member_name], y)
-            if member_role in ['代表取締役', '代表理事']:
-                if member_address:
-                    y = draw_item('　住所', [member_address], y)
-            if y < margin_bottom + 30 * mm:
-                new_page()
-    elif company_type == '一般社団法人' and members:
-        for member in members:
-            member_name = member.get('name', '')
-            member_address = member.get('address', '')
-            member_role = member.get('role', '理事')
-            y = draw_item('役員に関する事項', [''], y)
-            y = draw_item('　資格', [member_role], y)
-            y = draw_item('　氏名', [member_name], y)
-            if member_role == '代表理事':
-                if member_address:
-                    y = draw_item('　住所', [member_address], y)
-            if y < margin_bottom + 30 * mm:
-                new_page()
+    # 社員に関する事項（合同会社）
+    # 業務執行社員
+    c.drawString(box_margin_x + 5 * mm, y, '「社員に関する事項」')
+    y -= line_height
+    draw_dotted_line(y + 5)
+    for member in members:
+        y = draw_item("資格", "業務執行社員", y, indent=5*mm)
+        y = draw_item("氏名", member.get('name', ''), y, indent=5*mm)
+
+    # 代表社員
+    c.drawString(box_margin_x + 5 * mm, y, '「社員に関する事項」')
+    y -= line_height
+    draw_dotted_line(y + 5)
+    y = draw_item("資格", "代表社員", y, indent=5*mm)
+    y = draw_item("住所", rep_address, y, indent=5*mm)
+    y = draw_item("氏名", rep_name, y, indent=5*mm)
 
     # 登記記録に関する事項
-    y = draw_item('登記記録に関する事項', ['設立'], y)
+    y = draw_item("登記記録に関する事項", "設立", y)
 
-    # 下枠線
-    c.setLineWidth(0.5)
-    c.line(margin_left, y, margin_left + content_width, y)
+    # --- 申請人印 ---
+    seal_box_size = 25 * mm
+    seal_box_x = width - box_margin_x - seal_box_size - 5 * mm
+    seal_box_y = box_margin_y + 5 * mm
+    c.setLineWidth(1)
+    c.rect(seal_box_x, seal_box_y, seal_box_size, seal_box_size)
+    c.setFont(font_name, 9)
+    c.drawCentredString(seal_box_x + seal_box_size / 2, seal_box_y - 4 * mm, "（申請人印）")
 
     c.save()
     buffer.seek(0)
     return buffer.read()
+
