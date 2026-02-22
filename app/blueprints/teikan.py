@@ -2349,12 +2349,12 @@ def generate_stamp_duty_sheet_pdf(data):
 
 
 def generate_registration_items_pdf(data):  # noqa: C901
-    """別紙（登記すべき事項）のPDFを生成する（ユーザー指定の書式）"""
+    """別紙（登記すべき事項）のPDFを生成する（正式雛形）"""
     c, buffer, width, height, margin_left, margin_right, margin_top, margin_bottom, content_width, font_name, mm = _setup_pdf_canvas()
 
     # --- データ取得 ---
     full_name = _get_full_company_name(data)
-    address = data.get('address', '') + ' ' + data.get('address_detail', '')
+    address = data.get('address', '') + data.get('address_detail', '')
     purposes = data.get('purposes', [])
     capital = data.get('capital', '0')
     try:
@@ -2371,94 +2371,79 @@ def generate_registration_items_pdf(data):  # noqa: C901
     rep_name = rep.get('name', '')
     rep_address = rep.get('address', '')
 
-    # --- 描画設定 ---
-    c.setFont(font_name, 10)
+    # --- 描画共通設定 ---
     c.setFillColorRGB(0, 0, 0)
-    line_height = 28  # 行間を広げにする
-    y = height - 45 * mm
+    font_size = 10
+    line_height = 26
+    # 左右のマージン
+    lx = 20 * mm
+    rx = width - 20 * mm
+    # コンテンツ開始位置（ページ上部から）
+    y = height - 35 * mm
 
-    # --- ヘッダー ---
-    c.setFont(font_name, 14)
-    c.drawString(margin_left, height - 30 * mm, "別紙")
-    c.setFont(font_name, 10)
-    c.drawString(width - margin_right - 10 * mm, height - 30 * mm, "1/1頁")
+    # --- ヘッダー：「別紙」と「1/1頁」 ---
+    c.setFont(font_name, 16)
+    c.drawString(lx, y, "別紙")
+    # 1/1頁を枠付きで描画
+    page_label = "1／1　頁"
+    page_label_width = 22 * mm
+    page_label_height = 8 * mm
+    page_box_x = rx - page_label_width
+    page_box_y = y - 1 * mm
+    c.setLineWidth(1)
+    c.rect(page_box_x, page_box_y, page_label_width, page_label_height)
+    c.setFont(font_name, 9)
+    c.drawCentredString(page_box_x + page_label_width / 2, page_box_y + 2 * mm, page_label)
 
-    # --- 外枠 ---
-    c.setLineWidth(1.5)
-    box_margin_x = 12 * mm
-    box_margin_y = 35 * mm
-    c.rect(box_margin_x, box_margin_y, width - 2 * box_margin_x, height - box_margin_y - 25 * mm)
-    c.setLineWidth(0.5)
+    y -= 12 * mm
 
     # --- 描画ヘルパー ---
     def draw_dotted_line(y_pos):
-        c.setDash(1, 2)
-        c.line(box_margin_x, y_pos, width - box_margin_x, y_pos)
+        """y_posに点線を描画"""
+        c.setDash(1, 3)
+        c.setLineWidth(0.5)
+        c.line(lx, y_pos, rx, y_pos)
         c.setDash([])
 
-    def draw_item(label, value, y_pos, indent=0):
-        c.setFont(font_name, 10)
-        # 文字を描画
-        c.drawString(box_margin_x + 5 * mm + indent, y_pos, f'「{label}」')
-        c.drawString(box_margin_x + 35 * mm + indent, y_pos, str(value))
-        # 点線を文字の下に十分な間隔をとって描画
-        draw_dotted_line(y_pos - line_height + 10)
+    def draw_row(text, y_pos):
+        """1行描画して次のyを返す"""
+        c.setFont(font_name, font_size)
+        c.drawString(lx, y_pos, text)
+        draw_dotted_line(y_pos - line_height + 8)
         return y_pos - line_height
 
     # --- 内容描画 ---
-    y = draw_item("商号", full_name, y)
-    y = draw_item("本店", address, y)
-    y = draw_item("公告をする方法", "官報に掲載して行う。", y)
-
-    # 目的（各項目を独立行で描画）
-    # 「目的」ラベル行
-    c.setFont(font_name, 10)
-    c.drawString(box_margin_x + 5 * mm, y, '「目的」')
-    draw_dotted_line(y - line_height + 10)
-    y -= line_height
-    # 各目的を独立行で描画
+    y = draw_row(f'「商号」　{full_name}', y)
+    y = draw_row(f'「本店」　{address}', y)
+    y = draw_row('「公告をする方法」官報に掲載して行う。', y)
+    y = draw_row('「目的」', y)
     for i, p in enumerate(purposes, 1):
-        c.setFont(font_name, 10)
-        c.drawString(box_margin_x + 5 * mm, y, f'（{i}）　{p}')
-        draw_dotted_line(y - line_height + 10)
-        y -= line_height
+        y = draw_row(f'（{i}）　{p}', y)
+    y = draw_row(f'「資本金の額」金{capital_str}円', y)
 
-    y = draw_item("資本金の額", f'金{capital_str}円', y)
-
-    # 社員に関する事項（合同会社）
     # 業務執行社員
-    c.setFont(font_name, 10)
-    c.drawString(box_margin_x + 5 * mm, y, '「社員に関する事項」')
-    draw_dotted_line(y - line_height + 10)
-    y -= line_height
+    y = draw_row('「社員に関する事項」', y)
     for member in members:
-        y = draw_item("資格", "業務執行社員", y, indent=5*mm)
-        y = draw_item("氏名", member.get('name', ''), y, indent=5*mm)
+        y = draw_row('「資格」　業務執行社員', y)
+        y = draw_row(f'「氏名」　{member.get("name", "")}', y)
 
     # 代表社員
-    c.setFont(font_name, 10)
-    c.drawString(box_margin_x + 5 * mm, y, '「社員に関する事項」')
-    draw_dotted_line(y - line_height + 10)
-    y -= line_height
-    y = draw_item("資格", "代表社員", y, indent=5*mm)
-    y = draw_item("住所", rep_address, y, indent=5*mm)
-    y = draw_item("氏名", rep_name, y, indent=5*mm)
+    y = draw_row('「社員に関する事項」', y)
+    y = draw_row('「資格」　代表社員', y)
+    y = draw_row(f'「住所」　{rep_address}', y)
+    y = draw_row(f'「氏名」　{rep_name}', y)
 
     # 登記記録に関する事項
-    c.setFont(font_name, 10)
-    c.drawString(box_margin_x + 5 * mm, y, '「登記記録に関する事項」')
-    c.drawString(box_margin_x + 55 * mm, y, '設立')
-    draw_dotted_line(y - line_height + 10)
-    y -= line_height
+    y = draw_row('「登記記録に関する事項」　設立', y)
 
-    # --- 申請人印 ---
-    seal_box_size = 25 * mm
-    seal_box_x = width - box_margin_x - seal_box_size - 5 * mm
-    seal_box_y = box_margin_y + 5 * mm
+    # --- 申請人印（右下） ---
+    seal_size = 20 * mm
+    seal_x = rx - seal_size
+    seal_y = 20 * mm
     c.setLineWidth(1)
-    c.rect(seal_box_x, seal_box_y, seal_box_size, seal_box_size)
-    c.setFont(font_name, 9)
-    c.drawCentredString(seal_box_x + seal_box_size / 2, seal_box_y - 4 * mm, "（申請人印）")
+    c.rect(seal_x, seal_y, seal_size, seal_size)
+    c.setFont(font_name, 8)
+    c.drawCentredString(seal_x + seal_size / 2, seal_y - 4 * mm, "申請人印")
 
     c.save()
     buffer.seek(0)
