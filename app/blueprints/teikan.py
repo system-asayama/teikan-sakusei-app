@@ -1905,19 +1905,47 @@ def generate_seal_registration_pdf(data):  # noqa: C901
     # 本店・主たる事務所（ラベルy=683.5pt）
     c.drawString(330, 683.5, address)
 
-    # 資格（印鑑提出者）- 「理事・（　）」の括弧内
-    c.setFont(fn, 8)
-    c.drawString(360, 639.3, role)
+    # 資格（印鑑提出者）- 該当する資格を○で囲む
+    # テンプレートの資格欄構造:
+    # y=657.3: 「代表取締役・取締役・代表理事」(x=340.1)
+    # y=639.3: 「理事 ・ (」(x=327.5) 〜 「)」(x=376.4)
+    c.setLineWidth(1.0)
+    c.setStrokeColorRGB(0, 0, 0)
+    c.setFillColorRGB(0, 0, 0)
+    if company_type == '株式会社':
+        # 「代表取締役」を○で囲む（x=340.1, y=657.3）
+        # 「代表取締役」は約35pt幅
+        cx = 358.0  # 中心x
+        cy = 660.8  # 中心y
+        c.ellipse(cx - 22, cy - 6, cx + 22, cy + 10, stroke=1, fill=0)
+    elif company_type == '一般社団法人' or company_type == '一般財団法人':
+        # 「代表理事」を○で囲む（x=440付近, y=657.3）
+        cx = 460.0
+        cy = 660.8
+        c.ellipse(cx - 18, cy - 6, cx + 18, cy + 10, stroke=1, fill=0)
+    else:
+        # 合同会社など → 「理事 ・ (　)」の括弧内に「代表社員」テキストを書いて○で囲む
+        # 括弧: 「(」x=355, 「)」x=376.4, y=639.3
+        c.setFont(fn, 7)
+        c.drawString(358, 639.3, role)
+        # 括弧内テキストを○で囲む
+        cx = 365.0
+        cy = 642.8
+        c.ellipse(cx - 16, cy - 5, cx + 16, cy + 8, stroke=1, fill=0)
 
     # 氏名（印鑑提出者）（ラベルy=613pt）
     c.setFont(fn, 9)
     c.drawString(330, 613.0, rep.get('name', ''))
 
-    # 住所（届出人）（ラベルy=458.6pt）
-    c.drawString(100, 458.6, rep.get('address', address))
+    # 住所（届出人）（ラベルy=458.6pt）- 郵便番号を除去してラベル右側に配置
+    import re
+    rep_address = rep.get('address', address)
+    # 郵便番号（〒xxx-xxxx または xxx-xxxx 形式）を除去
+    rep_address = re.sub(r'[〒]?\d{3}-\d{4}\s*', '', rep_address).strip()
+    c.drawString(130, 458.6, rep_address)
 
-    # 氏名（届出人）（ラベルy=413.6pt）
-    c.drawString(100, 413.6, rep.get('name', ''))
+    # 氏名（届出人）（ラベルy=413.6pt）- ラベル右側に配置
+    c.drawString(130, 413.6, rep.get('name', ''))
 
     c.save()
     overlay_buffer.seek(0)
