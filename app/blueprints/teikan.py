@@ -972,6 +972,46 @@ def download_inkan_card():
         return redirect(url_for('teikan.registration_docs'))
 
 
+@bp.route('/registration_docs/download/stamp_duty_sheet')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def download_stamp_duty_sheet():
+    """登録免許税納付用台紙をダウンロード"""
+    data = get_session_data()
+    if not data.get('company_name'):
+        flash('最初から入力してください', 'warning')
+        return redirect(url_for('teikan.step1'))
+    try:
+        pdf_bytes = generate_stamp_duty_sheet_pdf(data)
+        company_type = data.get('company_type', '合同会社')
+        company_name = data.get('company_name', '会社')
+        full_name = f"{company_type}{company_name}"
+        return send_file(io.BytesIO(pdf_bytes), mimetype='application/pdf',
+                         as_attachment=True, download_name=f"{full_name}_登録免許税納付用台紙.pdf")
+    except Exception as e:
+        flash(f'PDF生成エラー: {str(e)}', 'error')
+        return redirect(url_for('teikan.registration_docs'))
+
+
+@bp.route('/registration_docs/download/registration_items')
+@require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
+def download_registration_items():
+    """別紙（登記すべき事項）をダウンロード"""
+    data = get_session_data()
+    if not data.get('company_name'):
+        flash('最初から入力してください', 'warning')
+        return redirect(url_for('teikan.step1'))
+    try:
+        pdf_bytes = generate_registration_items_pdf(data)
+        company_type = data.get('company_type', '合同会社')
+        company_name = data.get('company_name', '会社')
+        full_name = f"{company_type}{company_name}"
+        return send_file(io.BytesIO(pdf_bytes), mimetype='application/pdf',
+                         as_attachment=True, download_name=f"{full_name}_別紙（登記すべき事項）.pdf")
+    except Exception as e:
+        flash(f'PDF生成エラー: {str(e)}', 'error')
+        return redirect(url_for('teikan.registration_docs'))
+
+
 @bp.route('/registration_docs/download/all')
 @require_roles(ROLES["TENANT_ADMIN"], ROLES["SYSTEM_ADMIN"])
 def download_all_docs():
@@ -995,6 +1035,12 @@ def download_all_docs():
             # 設立登記申請書
             app_pdf = generate_registration_application_pdf(data)
             zf.writestr(f"{full_name}_設立登記申請書.pdf", app_pdf)
+            # 登録免許税納付用台紙
+            stamp_duty_pdf = generate_stamp_duty_sheet_pdf(data)
+            zf.writestr(f"{full_name}_登録免許税納付用台紙.pdf", stamp_duty_pdf)
+            # 別紙（登記すべき事項）
+            reg_items_pdf = generate_registration_items_pdf(data)
+            zf.writestr(f"{full_name}_別紙（登記すべき事項）.pdf", reg_items_pdf)
 
             # 印鑑届出書
             seal_pdf = generate_seal_registration_pdf(data)
@@ -1090,6 +1136,10 @@ def preview_pdf(doc_type):
             pdf_bytes = generate_seal_registration_pdf(data)
         elif doc_type == 'inkan_card':
             pdf_bytes = generate_inkan_card_pdf(data)
+        elif doc_type == 'stamp_duty_sheet':
+            pdf_bytes = generate_stamp_duty_sheet_pdf(data)
+        elif doc_type == 'registration_items':
+            pdf_bytes = generate_registration_items_pdf(data)
         else:
             return jsonify({'error': '不明な書類種別です'}), 400
         if isinstance(pdf_bytes, bytes):
@@ -2251,3 +2301,179 @@ def generate_inkan_card_pdf(data):  # noqa: C901
     writer.write(output_buffer)
     output_buffer.seek(0)
     return output_buffer.read()
+
+
+def generate_stamp_duty_sheet_pdf(data):
+    """登録免許税納付用台紙のPDFを生成する"""
+    c, buffer, width, height, margin_left, margin_right, margin_top, margin_bottom, content_width, font_name, mm = _setup_pdf_canvas()
+    company_type = data.get('company_type', '合同会社')
+    # 登録免許税額を計算
+    capital = data.get('capital_amount', 0)
+    try:
+        capital = int(str(capital).replace(',', '').replace('，', ''))
+    except Exception:
+        capital = 0
+    if company_type == '株式会社':
+        tax = max(150000, int(capital * 0.007))
+    elif company_type == '合同会社':
+        tax = max(60000, int(capital * 0.007))
+    else:
+        tax = 60000
+    tax_str = f'{tax:,}'
+    # タイトル
+    c.setFont(font_name, 14)
+    c.drawCentredString(width / 2, height - 30 * mm, '登録免許税納付用台紙')
+    # 説明文
+    c.setFont(font_name, 9)
+    c.drawCentredString(width / 2, height - 42 * mm, f'登録免許税額：金{tax_str}円分の収入印紙を下の枠内に貼付してください。')
+    c.drawCentredString(width / 2, height - 48 * mm, '（収入印紙に消印はしないでください。）')
+    # 収入印紙貼付欄（大きな枠）
+    box_x = margin_left + 10 * mm
+    box_y = height - 200 * mm
+    box_w = content_width - 20 * mm
+    box_h = 130 * mm
+    c.setLineWidth(1.5)
+    c.rect(box_x, box_y, box_w, box_h)
+    # 「収入印紙貼付欄」テキスト
+    c.setFont(font_name, 11)
+    c.drawCentredString(box_x + box_w / 2, box_y + box_h / 2 + 5 * mm, '収　入　印　紙　貼　付　欄')
+    c.setFont(font_name, 9)
+    c.drawCentredString(box_x + box_w / 2, box_y + box_h / 2 - 5 * mm, f'（金{tax_str}円）')
+    # 注意書き
+    c.setFont(font_name, 8)
+    c.drawString(margin_left, box_y - 10 * mm, '※ 収入印紙は消印しないでください。')
+    c.drawString(margin_left, box_y - 16 * mm, '※ この台紙は設立登記申請書に添付してください。')
+    c.save()
+    buffer.seek(0)
+    return buffer.read()
+
+
+def generate_registration_items_pdf(data):  # noqa: C901
+    """別紙（登記すべき事項）のPDFを生成する"""
+    c, buffer, width, height, margin_left, margin_right, margin_top, margin_bottom, content_width, font_name, mm = _setup_pdf_canvas()
+    company_type = data.get('company_type', '合同会社')
+    company_name = data.get('company_name', '')
+    company_type_position = data.get('company_type_position', 'before')
+    if company_type_position == 'before':
+        full_name = f'{company_type}{company_name}'
+    else:
+        full_name = f'{company_name}{company_type}'
+    address = data.get('address', '')
+    purposes = data.get('purposes', [])
+    capital = data.get('capital_amount', '')
+    try:
+        capital_int = int(str(capital).replace(',', '').replace('，', ''))
+        capital_str = f'{capital_int:,}'
+    except Exception:
+        capital_str = str(capital)
+    members = data.get('members', [])
+    # ページ設定
+    y = height - margin_top
+    line_h = 7.5 * mm
+
+    def new_page():
+        nonlocal y
+        c.showPage()
+        y = height - margin_top
+
+    def draw_item(label, value_lines, y_pos):
+        """1項目を描画する（複数行対応）"""
+        c.setLineWidth(0.5)
+        c.setFont(font_name, 9)
+        # ラベル
+        c.drawString(margin_left, y_pos - 5 * mm, label)
+        # 値（複数行）
+        for i, line in enumerate(value_lines):
+            c.drawString(margin_left + 35 * mm, y_pos - 5 * mm - i * 5 * mm, line)
+        total_h = max(line_h, 5 * mm * len(value_lines) + 3 * mm)
+        c.line(margin_left, y_pos, margin_left + content_width, y_pos)
+        return y_pos - total_h
+
+    # タイトル
+    c.setFont(font_name, 12)
+    c.drawString(margin_left, y, '別　紙')
+    y -= 8 * mm
+    c.setFont(font_name, 10)
+    c.drawString(margin_left, y, '登記すべき事項')
+    y -= 10 * mm
+
+    # 外枠上線
+    c.setLineWidth(0.5)
+    c.line(margin_left, y, margin_left + content_width, y)
+
+    # 商号
+    y = draw_item('商号', [full_name], y)
+
+    # 本店
+    y = draw_item('本店', [address], y)
+
+    # 公告方法
+    y = draw_item('公告をする方法', ['官報に掲載して行う。'], y)
+
+    # 目的
+    if purposes:
+        purpose_lines = [f'({i}) {p}' for i, p in enumerate(purposes, 1)]
+        y = draw_item('目的', purpose_lines, y)
+    else:
+        y = draw_item('目的', ['（目的未設定）'], y)
+
+    # 資本金
+    y = draw_item('資本金の額', [f'金{capital_str}円'], y)
+
+    # 社員・役員情報
+    if company_type == '合同会社' and members:
+        for member in members:
+            member_name = member.get('name', '')
+            member_address = member.get('address', '')
+            member_role = member.get('role', '業務執行社員')
+            is_rep = member.get('is_representative', False) or member_role in ['代表社員', '代表理事']
+            # 業務執行社員
+            y = draw_item('社員に関する事項', [''], y)
+            if member_address:
+                y = draw_item('　住所', [member_address], y)
+            y = draw_item('　氏名', [member_name], y)
+            y = draw_item('　資格', [member_role], y)
+            if is_rep or member_role == '代表社員':
+                y = draw_item('代表社員に関する事項', [''], y)
+                if member_address:
+                    y = draw_item('　住所', [member_address], y)
+                y = draw_item('　氏名', [member_name], y)
+            if y < margin_bottom + 30 * mm:
+                new_page()
+    elif company_type == '株式会社' and members:
+        for member in members:
+            member_name = member.get('name', '')
+            member_address = member.get('address', '')
+            member_role = member.get('role', '取締役')
+            y = draw_item('役員に関する事項', [''], y)
+            y = draw_item('　資格', [member_role], y)
+            y = draw_item('　氏名', [member_name], y)
+            if member_role in ['代表取締役', '代表理事']:
+                if member_address:
+                    y = draw_item('　住所', [member_address], y)
+            if y < margin_bottom + 30 * mm:
+                new_page()
+    elif company_type == '一般社団法人' and members:
+        for member in members:
+            member_name = member.get('name', '')
+            member_address = member.get('address', '')
+            member_role = member.get('role', '理事')
+            y = draw_item('役員に関する事項', [''], y)
+            y = draw_item('　資格', [member_role], y)
+            y = draw_item('　氏名', [member_name], y)
+            if member_role == '代表理事':
+                if member_address:
+                    y = draw_item('　住所', [member_address], y)
+            if y < margin_bottom + 30 * mm:
+                new_page()
+
+    # 登記記録に関する事項
+    y = draw_item('登記記録に関する事項', ['設立'], y)
+
+    # 下枠線
+    c.setLineWidth(0.5)
+    c.line(margin_left, y, margin_left + content_width, y)
+
+    c.save()
+    buffer.seek(0)
+    return buffer.read()

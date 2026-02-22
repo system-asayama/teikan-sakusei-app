@@ -413,6 +413,48 @@
 </div>
 {% endif %}
 
+<!-- 登録免許税納付用台紙 -->
+<div class="doc-card">
+  <div class="doc-card-title">
+    <span class="badge-auto">自動生成</span>
+    登録免許税納付用台紙
+  </div>
+  <div class="doc-card-desc">
+    {% if company_type == '株式会社' %}
+    資本金の1000劆1・7（最低15万円）の収入印紙を貼付する台紙です。収入印紙は消印しないでください。
+    {% elif company_type == '一般社団法人' %}
+    6万円の収入印紙を貼付する台紙です。収入印紙は消印しないでください。
+    {% else %}
+    資本金の1000劆1・7（最低6万円）の収入印紙を貼付する台紙です。収入印紙は消印しないでください。
+    {% endif %}
+  </div>
+  <div class="doc-card-actions">
+    <a href="{{ url_for('teikan.download_stamp_duty_sheet') }}" class="btn btn-primary" style="text-decoration:none;padding:10px 16px;font-size:13px;">
+      ⬇️ PDFをダウンロード
+    </a>
+    <button class="btn-preview" onclick="openPdfPreview('stamp_duty_sheet', '登録免許税納付用台紙')">
+      👁 PDFプレビュー
+    </button>
+  </div>
+</div>
+
+<!-- 別紙（登記すべき事項） -->
+<div class="doc-card">
+  <div class="doc-card-title">
+    <span class="badge-auto">自動生成</span>
+    別紙（登記すべき事項）
+  </div>
+  <div class="doc-card-desc">設立登記申請書に添付する別紙です。商号・本店・目的・資本金・社員情報など登記すべき事項を一覧形式で記載します。</div>
+  <div class="doc-card-actions">
+    <a href="{{ url_for('teikan.download_registration_items') }}" class="btn btn-primary" style="text-decoration:none;padding:10px 16px;font-size:13px;">
+      ⬇️ PDFをダウンロード
+    </a>
+    <button class="btn-preview" onclick="openPdfPreview('registration_items', '別紙（登記すべき事項）')">
+      👁 PDFプレビュー
+    </button>
+  </div>
+</div>
+
 <!-- 印鑑届出書 -->
 <div class="doc-card">
   <div class="doc-card-title">
@@ -439,22 +481,6 @@
     代表者の印鑑登録証明書
   </div>
   <div class="doc-card-desc">代表者個人の印鑑証明書です。市区町村の窓口またはコンビニで取得できます（発行から3ヶ月以内のもの）。</div>
-</div>
-
-<div class="doc-card" style="background:#fafafa;">
-  <div class="doc-card-title">
-    <span class="badge-manual">自分で用意</span>
-    登録免許税納付用台紙（収入印紙）
-  </div>
-  <div class="doc-card-desc">
-    {% if company_type == '株式会社' %}
-    株式会社の設立登記には、資本金の額の1000分の7（最低15万円）の登録免許税が必要です。収入印紙を購入してA4用紙に貼付してください。
-    {% elif company_type == '一般社団法人' %}
-    一般社団法人の設立登記には、6万円の登録免許税が必要です。収入印紙を購入してA4用紙に貼付してください。
-    {% else %}
-    合同会社の設立登記には、資本金の額の1000分の7（最低6万円）の登録免許税が必要です。収入印紙を購入してA4用紙に貼付してください。
-    {% endif %}
-  </div>
 </div>
 
 {% if company_type != '合同会社' %}
