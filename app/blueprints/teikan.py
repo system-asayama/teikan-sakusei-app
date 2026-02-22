@@ -2374,7 +2374,7 @@ def generate_registration_items_pdf(data):  # noqa: C901
     # --- 描画共通設定 ---
     c.setFillColorRGB(0, 0, 0)
     font_size = 10
-    line_height = 26
+    line_height = 30
     # 左右のマージン
     lx = 20 * mm
     rx = width - 20 * mm
@@ -2409,7 +2409,7 @@ def generate_registration_items_pdf(data):  # noqa: C901
         """1行描画して次のyを返す"""
         c.setFont(font_name, font_size)
         c.drawString(lx, y_pos, text)
-        draw_dotted_line(y_pos - line_height + 8)
+        draw_dotted_line(y_pos - line_height + 4)
         return y_pos - line_height
 
     # --- 内容描画 ---
