@@ -2408,8 +2408,9 @@ def generate_registration_items_pdf(data):  # noqa: C901
     def draw_row(text, y_pos):
         """1行描画して次のyを返す"""
         c.setFont(font_name, font_size)
-        c.drawString(lx, y_pos, text)
-        # 点線は文字の直下（文字ベースラインから-14pt）
+        # 文字を点線の中間に来るよう少し下げて描画
+        c.drawString(lx, y_pos - 5, text)
+        # 点線は文字の直下
         draw_dotted_line(y_pos - 14)
         return y_pos - line_height
 
