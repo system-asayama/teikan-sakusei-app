@@ -1965,31 +1965,36 @@ def generate_seal_registration_pdf(data):  # noqa: C901
     birth_day = rep.get('birth_day', '')
     if birth_era or birth_year:
         # 元号を○で囲む
+        # 画像解析結果: x=321.96から「大・昭・平・西暦」
+        # 各元号の中心x座標（グリッド画像から計測）
         era_positions = {
-            '大正': (322.0, 585.0),
-            '昭和': (335.5, 585.0),
-            '平成': (349.0, 585.0),
-            '西暦': (362.5, 585.0),
+            '大正': (327.0, 584.0),   # x=321.96 + 5pt (拡大画像計測)
+            '昭和': (347.0, 584.0),   # x=321.96 + 25pt (拡大画像計測)
+            '平成': (367.0, 584.0),   # x=321.96 + 45pt (拡大画像計測)
+            '西暦': (385.0, 584.0),   # x=321.96 + 63pt (西暦は2文字中心)
         }
         if birth_era in era_positions:
             ex, ey = era_positions[birth_era]
             c.setLineWidth(0.8)
-            c.ellipse(ex - 1, ey - 4, ex + 10, ey + 8, stroke=1, fill=0)
+            # 元号文字の周りに横長楕円を描画
+            w = 14 if birth_era == '西暦' else 10
+            c.ellipse(ex - w//2, ey - 5, ex + w//2, ey + 7, stroke=1, fill=0)
         # 年・月・日を入力
         c.setFont(fn, 9)
-        # テンプレート座標: 「年」x=392.5、「日生」x=443.9、「月」x=480.4
-        # 年の入力は「年」ラベルの左側
+        # テンプレート座標: 「年」x=392.52、「日生」x=443.88、「月」x=480.36
+        # 年の入力は「年」ラベルの左側に右寄せ
         if birth_year:
             year_str = str(birth_year)
-            c.drawString(392.5 - len(year_str) * 6 - 2, 581.6, year_str)
-        # 日の入力は「日生」ラベルの左側
+            # 年の入力桁数に応じて位置調整（1桁=5pt、中央寄せ）
+            c.drawString(389 - len(year_str) * 5, 581.6, year_str)
+        # 日の入力は「日生」ラベルの左側に右寄せ
         if birth_day:
             day_str = str(birth_day)
-            c.drawString(443.9 - len(day_str) * 6 - 2, 581.6, day_str)
-        # 月の入力は「月」ラベルの左側
+            c.drawString(441 - len(day_str) * 5, 581.6, day_str)
+        # 月の入力は「月」ラベルの左側に右寄せ
         if birth_month:
             month_str = str(birth_month)
-            c.drawString(480.4 - len(month_str) * 6 - 2, 581.6, month_str)
+            c.drawString(477 - len(month_str) * 5, 581.6, month_str)
 
     c.save()
     overlay_buffer.seek(0)
