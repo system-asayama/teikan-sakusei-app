@@ -2062,13 +2062,14 @@ def generate_seal_registration_pdf(data):  # noqa: C901
     c.drawString(130, 413.6, rep.get('name', ''))
 
     # チェックボックス: 「印鑑カードは引き継がない。」にレ点を入れる
-    # テンプレート上の□の中心座標: x≈55, y≈489.8
-    c.setFont(fn, 10)
-    c.drawString(52, 487.0, '✓')
+    # テキスト「印鑑カードは引き継がない。」bbox: x0=82.56, y0=552.11, y1=563.06
+    c.setFont(fn, 7)
+    c.drawString(71.0, 554.5, '✓')
 
     # チェックボックス: 「印鑑提出者本人」にレ点を入れる
-    # テンプレート上の□の中心座標: x≈197.9, y≈449.8
-    c.drawString(195, 447.0, '✓')
+    # テキスト「印鑑提出者本人」bbox: x0=170.76, y0=483.35, y1=494.30
+    c.setFont(fn, 8)
+    c.drawString(159.0, 485.8, '✓')
 
     # フリガナ（届出人）（ラベルy=436.8pt）- ラベル右側に配置
     name_kana = rep.get('name_kana', '')
