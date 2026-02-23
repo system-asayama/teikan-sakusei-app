@@ -1078,6 +1078,22 @@ def download_all_docs():
                 accept_pdf = generate_acceptance_letter_pdf(data)
                 zf.writestr(f"{full_name}_就任承諾書.pdf", accept_pdf)
 
+            # 綴じ方ガイドPDF
+            import os
+            import sys
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'services'))
+            from generate_guides import generate_kk_guide, generate_gk_guide, generate_ippan_guide
+            if company_type == '株式会社':
+                guide_pdf = generate_kk_guide().read()
+                guide_name = '綴じ方ガイド（株式会社版）.pdf'
+            elif company_type == '合同会社':
+                guide_pdf = generate_gk_guide().read()
+                guide_name = '綴じ方ガイド（合同会社版）.pdf'
+            else:
+                guide_pdf = generate_ippan_guide().read()
+                guide_name = '綴じ方ガイド（一般社団法人版）.pdf'
+            zf.writestr(guide_name, guide_pdf)
+
         zip_buffer.seek(0)
         return send_file(zip_buffer, mimetype='application/zip',
                          as_attachment=True,
