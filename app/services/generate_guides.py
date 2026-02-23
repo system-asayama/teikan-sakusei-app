@@ -17,11 +17,17 @@ WIDTH, HEIGHT = A4
 FONT_NAME = "HeiseiMin-W3"
 FONT_NAME_B = "HeiseiKakuGo-W5"
 
+# フォントパス（アプリ同梱フォントを使用）
+import os as _os
+_FONT_DIR = _os.path.join(_os.path.dirname(__file__), 'fonts')
+_FONT_MINCHO = _os.path.join(_FONT_DIR, 'ipam.ttf')
+_FONT_GOTHIC = _os.path.join(_FONT_DIR, 'ipag.ttf')
+
 # --- 初期設定 ---
 def setup_canvas(buffer):
     c = rl_canvas.Canvas(buffer, pagesize=A4)
-    pdfmetrics.registerFont(TTFont(FONT_NAME, "/usr/share/fonts/opentype/ipafont-mincho/ipam.ttf"))
-    pdfmetrics.registerFont(TTFont(FONT_NAME_B, "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf"))
+    pdfmetrics.registerFont(TTFont(FONT_NAME, _FONT_MINCHO))
+    pdfmetrics.registerFont(TTFont(FONT_NAME_B, _FONT_GOTHIC))
     return c
 
 def draw_header(c, title):
